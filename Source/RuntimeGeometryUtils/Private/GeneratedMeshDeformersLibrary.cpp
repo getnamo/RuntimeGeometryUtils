@@ -52,7 +52,8 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshMove(UGeneratedMesh* M
 					{
 						float Ratio = FMath::Clamp((Radius - Distance) / Radius, Hardness, 1.f);	//hardness makes a bottom clamp
 						float Scale = Ratio * Magnitude;	//magnitude scale whole operation
-						FVector3d NewPos = Pos + (ToWorldLocation - FromWorldLocation).GetSafeNormal() * Scale;
+						//float Displacement = (ToWorldLocation - FromWorldLocation).Size();
+						FVector3d NewPos = Pos + ((ToWorldLocation - FromWorldLocation) * Scale);
 						Mesh.SetVertex(vid, NewPos);
 					}
 					

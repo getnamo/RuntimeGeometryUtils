@@ -42,15 +42,15 @@ RUNTIMEGEOMETRYUTILS_API void RTGUtils::UpdateDynamicMeshFromStaticMesh(UStaticM
 	Converter.bPrintDebugMessages = true;
 	//Converter.bEnableOutputGroups = false;
 
+#if WITH_EDITORONLY_DATA
 	FMeshDescription* Description = StaticMesh->GetMeshDescription(0);
 	
 	//Description->DeletePolygonGroup(FPolygonGroupID(0));
 
 	Converter.Convert(Description, OutMesh);
-		
-	/*
-	//Raw method variant
-	
+#else
+	//Raw method variant - we may need to use this due to GetMeshDescription not being available...
+
 	int32 LODIndex = 0;
 	int32 NumSections = StaticMesh->GetNumSections(LODIndex);
 	for (int32 SectionIndex = 0; SectionIndex < NumSections; SectionIndex++)
@@ -60,7 +60,7 @@ RUNTIMEGEOMETRYUTILS_API void RTGUtils::UpdateDynamicMeshFromStaticMesh(UStaticM
 		TArray<int32> Triangles;
 		TArray<FVector> Normals;
 		TArray<FVector2D> UVs;
-		Todo: support multiple UVs?
+		//Todo: support multiple UVs ?
 		//TArray<FVector2D> UVs1;
 		//TArray<FVector2D> UVs2;
 		//TArray<FVector2D> UVs3;
@@ -79,7 +79,7 @@ RUNTIMEGEOMETRYUTILS_API void RTGUtils::UpdateDynamicMeshFromStaticMesh(UStaticM
 
 		FDynamicMeshNormalOverlay* OutNormals = OutMesh.Attributes()->PrimaryNormals();
 		FDynamicMeshUVOverlay* OutUVs = OutMesh.Attributes()->PrimaryUV();
-		
+
 
 		// Normals
 		for (FVector& Normal : Normals)
@@ -94,7 +94,7 @@ RUNTIMEGEOMETRYUTILS_API void RTGUtils::UpdateDynamicMeshFromStaticMesh(UStaticM
 		}
 
 		//Triangles
-		for (int i = 0; (i+2) <Triangles.Num(); i = i+3)
+		for (int i = 0; (i + 2) < Triangles.Num(); i = i + 3)
 		{
 			FIndex3i TriangleI3;
 			TriangleI3.A = Triangles[i];
@@ -104,7 +104,9 @@ RUNTIMEGEOMETRYUTILS_API void RTGUtils::UpdateDynamicMeshFromStaticMesh(UStaticM
 			int32 TriangleId = OutMesh.AppendTriangle(TriangleI3);
 			OutUVs->SetTriangle(TriangleId, TriangleI3);
 		}
-	}*/
+
+	}
+#endif
 }
 
 void RTGUtils::UpdatePMCFromDynamicMesh_SplitTriangles(
