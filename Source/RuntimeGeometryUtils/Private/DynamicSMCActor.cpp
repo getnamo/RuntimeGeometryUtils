@@ -48,7 +48,7 @@ void ADynamicSMCActor::UpdateSMCMesh()
 		StaticMesh = NewObject<UStaticMesh>();
 		MeshComponent->SetStaticMesh(StaticMesh);
 		// add one material slot
-		StaticMesh->StaticMaterials.Add(FStaticMaterial());
+		StaticMesh->GetStaticMaterials().Add(FStaticMaterial());
 	}
 
 	if (MeshComponent)

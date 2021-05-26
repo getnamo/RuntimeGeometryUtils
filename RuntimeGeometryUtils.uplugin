@@ -1,10 +1,10 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.0",
+	"VersionName": "0.2.0",
 	"FriendlyName": "RuntimeGeometryUtils",
 	"Description": "",
-	"Category": "Other",
+	"Category": "Mesh",
 	"CreatedBy": "Ryan Schmidt",
 	"CreatedByURL": "",
 	"DocsURL": "",
