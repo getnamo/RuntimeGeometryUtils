@@ -20,7 +20,8 @@ namespace RTGUtils
 
 	RUNTIMEGEOMETRYUTILS_API void UpdateDynamicMeshFromStaticMesh(
 		UStaticMesh* StaticMesh,
-		FDynamicMesh3& Mesh);
+		FDynamicMesh3& Mesh,
+		bool bUseMeshDescriptorsInEditor = false);
 
 
 

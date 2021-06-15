@@ -9,10 +9,6 @@
 #include "KismetProceduralMeshLibrary.h"
 
 
-
-
-
-
 void RTGUtils::UpdateStaticMeshFromDynamicMesh(
 	UStaticMesh* StaticMesh,
 	const FDynamicMesh3* Mesh)
@@ -36,77 +32,99 @@ void RTGUtils::UpdateStaticMeshFromDynamicMesh(
 }
 
 
-RUNTIMEGEOMETRYUTILS_API void RTGUtils::UpdateDynamicMeshFromStaticMesh(UStaticMesh* StaticMesh, FDynamicMesh3& OutMesh)
+RUNTIMEGEOMETRYUTILS_API void RTGUtils::UpdateDynamicMeshFromStaticMesh(UStaticMesh* StaticMesh, FDynamicMesh3& OutMesh, bool bUseMeshDescriptorsInEditor /*= false*/)
 {
-	FMeshDescriptionToDynamicMesh Converter;
-	Converter.bPrintDebugMessages = true;
-	//Converter.bEnableOutputGroups = false;
 
 #if WITH_EDITORONLY_DATA
-	FMeshDescription* Description = StaticMesh->GetMeshDescription(0);
-	
-	//Description->DeletePolygonGroup(FPolygonGroupID(0));
-
-	Converter.Convert(Description, OutMesh);
-#else
-	//Raw method variant - we may need to use this due to GetMeshDescription not being available...
-
-	int32 LODIndex = 0;
-	int32 NumSections = StaticMesh->GetNumSections(LODIndex);
-	for (int32 SectionIndex = 0; SectionIndex < NumSections; SectionIndex++)
+	if (bUseMeshDescriptorsInEditor)
 	{
-		// Buffers for copying geom data
-		TArray<FVector> Vertices;
-		TArray<int32> Triangles;
-		TArray<FVector> Normals;
-		TArray<FVector2D> UVs;
-		//Todo: support multiple UVs ?
-		//TArray<FVector2D> UVs1;
-		//TArray<FVector2D> UVs2;
-		//TArray<FVector2D> UVs3;
-		TArray<FProcMeshTangent> Tangents;
+		//Potentially faster path in editor
+		FMeshDescriptionToDynamicMesh Converter;
+		Converter.bPrintDebugMessages = true;
+		//Converter.bEnableOutputGroups = false;
 
-		// Get geom data from static mesh
-		UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(StaticMesh, LODIndex, SectionIndex, Vertices, Triangles, Normals, UVs, Tangents);
+		FMeshDescription* Description = StaticMesh->GetMeshDescription(0);
+		//Description->DeletePolygonGroup(FPolygonGroupID(0));
 
-		// Append vertices
-		for (FVector& Vertex : Vertices)
+		Converter.Convert(Description, OutMesh);
+		return;
+	}
+	else
+	{
+		if (StaticMesh && !StaticMesh->bAllowCPUAccess)
 		{
-			OutMesh.AppendVertex(Vertex);
+			StaticMesh->bAllowCPUAccess = true;
+			UE_LOG(LogTemp, Warning,
+				TEXT("RTGUtils::UpdateDynamicMeshFromStaticMesh: Overriding bAllowCPUAccess for %s in editor mode only! Update setting for asset or it will not work in a packaged game."),
+				*StaticMesh->GetFName().ToString());
 		}
-
-		OutMesh.EnableAttributes();
-
-		FDynamicMeshNormalOverlay* OutNormals = OutMesh.Attributes()->PrimaryNormals();
-		FDynamicMeshUVOverlay* OutUVs = OutMesh.Attributes()->PrimaryUV();
-
-
-		// Normals
-		for (FVector& Normal : Normals)
-		{
-			OutNormals->AppendElement(Normal);
-		}
-
-		// UVs
-		for (FVector2D& UV : UVs)
-		{
-			OutUVs->AppendElement(UV);
-		}
-
-		//Triangles
-		for (int i = 0; (i + 2) < Triangles.Num(); i = i + 3)
-		{
-			FIndex3i TriangleI3;
-			TriangleI3.A = Triangles[i];
-			TriangleI3.B = Triangles[i + 1];
-			TriangleI3.C = Triangles[i + 2];
-
-			int32 TriangleId = OutMesh.AppendTriangle(TriangleI3);
-			OutUVs->SetTriangle(TriangleId, TriangleI3);
-		}
-
 	}
 #endif
+
+	if (!(StaticMesh && StaticMesh->bAllowCPUAccess && StaticMesh->GetRenderData() != nullptr))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("RTGUtils::UpdateDynamicMeshFromStaticMesh: Cannot convert static mesh to FDynamicMesh3. Static mesh requires AllowCPUAccess set to true."));
+		return;
+	}
+
+	OutMesh.EnableAttributes();
+	FDynamicMeshNormalOverlay* Normals = OutMesh.Attributes()->PrimaryNormals();
+	FDynamicMeshUVOverlay* UVs = OutMesh.Attributes()->PrimaryUV();
+
+
+	if (StaticMesh->GetRenderData()->LODResources.IsValidIndex(0))
+	{
+		int32 NumSections = StaticMesh->GetNumSections(0);
+		const FStaticMeshLODResources& LOD = StaticMesh->GetRenderData()->LODResources[0];
+		const FStaticMeshVertexBuffers& VertexBuffers = LOD.VertexBuffers;
+
+		//Copy sections like a procedural mesh method
+		TArray<int32> Triangles;
+		for (int32 SectionIndex = 0; SectionIndex < NumSections; SectionIndex++)
+		{
+			if (LOD.Sections.IsValidIndex(SectionIndex))
+			{
+				TArray<int32> MeshToSectionVertMap;
+
+				const FStaticMeshSection& Section = LOD.Sections[SectionIndex];
+				const uint32 OnePastLastIndex = Section.FirstIndex + Section.NumTriangles * 3;
+				FIndexArrayView Indices = LOD.IndexBuffer.GetArrayView();
+				for (uint32 i = Section.FirstIndex; i < OnePastLastIndex; i++)
+				{
+					uint32 MeshVertIndex = Indices[i];
+
+					int32 NewIndex = MeshToSectionVertMap.Find(MeshVertIndex);
+					if (NewIndex == INDEX_NONE)
+					{
+						OutMesh.AppendVertex(VertexBuffers.PositionVertexBuffer.VertexPosition(MeshVertIndex));
+						MeshToSectionVertMap.Add(MeshVertIndex);
+					}
+
+					Normals->AppendElement(
+						FVector(VertexBuffers.StaticMeshVertexBuffer.VertexTangentZ(MeshVertIndex)));
+					UVs->AppendElement(VertexBuffers.StaticMeshVertexBuffer.GetVertexUV(MeshVertIndex, 0));
+
+					Triangles.Add(MeshVertIndex);
+				}
+			}
+		}
+
+		//Same as Obj reader method
+		for (int Index = 0; Index < Triangles.Num(); Index += 3)
+		{
+			auto TriangleId = OutMesh.AppendTriangle(Triangles[Index + 0], Triangles[Index + 1], Triangles[Index + 2]);
+
+			if (Normals && Normals->IsElement(Index + 0) && Normals->IsElement(Index + 1) && Normals->IsElement(
+				Index + 2))
+			{
+				Normals->SetTriangle(TriangleId, FIndex3i(Index + 0, Index + 1, Index + 2));
+			}
+			if (UVs && UVs->IsElement(Index + 0) && UVs->IsElement(Index + 1) && UVs->IsElement(Index + 2))
+			{
+				UVs->SetTriangle(TriangleId, FIndex3i(Index + 0, Index + 1, Index + 2));
+			}
+		}
+	}
 }
 
 void RTGUtils::UpdatePMCFromDynamicMesh_SplitTriangles(
