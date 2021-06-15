@@ -100,8 +100,7 @@ RUNTIMEGEOMETRYUTILS_API void RTGUtils::UpdateDynamicMeshFromStaticMesh(UStaticM
 						MeshToSectionVertMap.Add(MeshVertIndex);
 					}
 
-					Normals->AppendElement(
-						FVector(VertexBuffers.StaticMeshVertexBuffer.VertexTangentZ(MeshVertIndex)));
+					Normals->AppendElement(FVector(VertexBuffers.StaticMeshVertexBuffer.VertexTangentZ(MeshVertIndex)));
 					UVs->AppendElement(VertexBuffers.StaticMeshVertexBuffer.GetVertexUV(MeshVertIndex, 0));
 
 					Triangles.Add(MeshVertIndex);
