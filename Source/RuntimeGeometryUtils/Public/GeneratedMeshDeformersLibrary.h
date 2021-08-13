@@ -27,6 +27,14 @@ public:
 	UFUNCTION(BlueprintCallable) static UPARAM(DisplayName = "Input Mesh")
 	UGeneratedMesh* DeformMeshMove(UGeneratedMesh* Mesh, FVector FromWorldLocation = FVector(0, 0, 0), FVector ToWorldLocation = FVector(0, 0, 0), float Radius = 1, float Hardness = 1, float Magnitude = 1);
 
+
+	/** 
+	* Deform a mesh from a heightmap. Used to make procedural terrain from e.g. handcrafted heightmap
+	*/
+	UFUNCTION(BlueprintCallable) static UPARAM(DisplayName = "Input Mesh")
+	UGeneratedMesh* DeformMeshHeightmap(UGeneratedMesh* Mesh, UTexture2D* Heightmap, float ZScale= 1, FVector DirectionNormal= FVector(0, 0, 1));
+
+
 	/**
 	 * Displace the mesh vertices using a 2D Sin wave.
 	 */

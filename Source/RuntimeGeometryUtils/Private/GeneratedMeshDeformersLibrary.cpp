@@ -64,6 +64,48 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshMove(UGeneratedMesh* M
 	return MeshObj;
 }
 
+
+UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshHeightmap(UGeneratedMesh* MeshObj, UTexture2D* Heightmap, float ZScale/*= 1*/, FVector DirectionNormal/*= FVector(0, 0, 1)*/)
+{
+	//TODO
+	//Unlock heightmap
+	//Heightmap
+
+	if (MeshObj)
+	{
+		MeshObj->EditMeshInPlace([&](FDynamicMesh3& Mesh)
+		{
+			ParallelFor(Mesh.MaxVertexID(), [&](int32 vid)
+			{
+				if (Mesh.IsVertex(vid))
+				{
+					FVector3d Pos = Mesh.GetVertex(vid);
+
+					//TODO: deform along Z axis
+					//TODO: support vector deform
+
+					//REFS
+					/*float Distance = (Pos - FromWorldLocation).Length();
+
+					if (Distance < Radius)
+					{
+						float Ratio = FMath::Clamp((Radius - Distance) / Radius, Hardness, 1.f);	//hardness makes a bottom clamp
+						float Scale = Ratio * Magnitude;	//magnitude scale whole operation
+						//float Displacement = (ToWorldLocation - FromWorldLocation).Size();
+						FVector3d NewPos = Pos + ((ToWorldLocation - FromWorldLocation) * Scale);
+						Mesh.SetVertex(vid, NewPos);
+					}*/
+
+				}
+			});
+		});
+	}
+
+	//re-lock heightmap
+
+	return MeshObj;
+}
+
 UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshAxisSinWaveRadial(UGeneratedMesh* MeshObj, float Magnitude, float Frequency, float FrequencyShift, FVector AxisIn)
 {
 	FVector3d Axis(AxisIn);
