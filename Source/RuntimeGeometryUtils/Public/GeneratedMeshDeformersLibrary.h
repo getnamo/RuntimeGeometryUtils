@@ -54,4 +54,9 @@ public:
 	UGeneratedMesh* SmoothMeshUniform(UGeneratedMesh* Mesh, float Alpha = 0.3, int32 Iterations = 1);
 
 
+protected:
+	/** 
+	* Read from texture pointer and get height
+	*/
+	static float HeightAtPixel(float X, float Y, void* TexturePointer, int32 TextureHeight, int32 TextureWidth, int32 BytesPerPixel = 4);
 };

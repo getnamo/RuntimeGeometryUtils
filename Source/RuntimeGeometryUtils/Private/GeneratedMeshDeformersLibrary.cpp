@@ -65,43 +65,93 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshMove(UGeneratedMesh* M
 }
 
 
-UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshHeightmap(UGeneratedMesh* MeshObj, UTexture2D* Heightmap, float ZScale/*= 1*/, FVector DirectionNormal/*= FVector(0, 0, 1)*/)
+float UGeneratedMeshDeformersLibrary::HeightAtPixel(float X, float Y, void* TexturePointer, int32 TextureHeight, int32 TextureWidth, int32 BytesPerPixel /*= 4*/)
 {
-	//TODO
-	//Unlock heightmap
-	//Heightmap
+	uint8* MipData = static_cast<uint8*>(TexturePointer);
+
+	//We assume texture pointer is locked for read...
+	bool bValidSample = X <= TextureHeight && Y <= TextureWidth;
+
+	if (!bValidSample)
+	{
+		return 0;
+	}
+
+	//BytesPerPixel
+
+	int32 SampleIndex = ((TextureWidth * FMath::RoundToInt(Y)) + FMath::RoundToInt(X)) * BytesPerPixel;
+	
+	if (SampleIndex >= (BytesPerPixel * TextureHeight * TextureWidth))
+	{
+		return 0;
+	}
+	return MipData[SampleIndex] / 255.f;
+
+	//Temp: get closest, TODO: interpolate from 4 nearest points
+}
+
+UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshHeightmap(UGeneratedMesh* MeshObj, UTexture2D* HeightmapTexture, float ZScale/*= 1*/, FVector DirectionNormal/*= FVector(0, 0, 1)*/)
+{
+	//Lock texture for read and get some metadata
+	int32 BytesPerPixel = 4;
+
+	EPixelFormat Format = HeightmapTexture->GetPixelFormat();
+	if (Format != PF_B8G8R8A8)
+	{
+		UE_LOG(LogTemp, Log, TEXT("NB: Pixel format is not PF_R8G8B8A8: %d"), Format);
+		//Todo: detect format and adjust BytesPerPixel
+
+		BytesPerPixel = 1;
+	}
+
+	const int32 TextureWidth = HeightmapTexture->PlatformData->Mips[0].SizeX;
+	const int32 TextureHeight= HeightmapTexture->PlatformData->Mips[0].SizeY;
+	const int32 DataLength = TextureHeight * TextureWidth * BytesPerPixel;
+
+	void* TextureDataPointer = HeightmapTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY);
 
 	if (MeshObj)
 	{
 		MeshObj->EditMeshInPlace([&](FDynamicMesh3& Mesh)
 		{
+			//grab bounds for mapped sampling
+			//TODO: generalize to projection vector
+			FAxisAlignedBox3d Bounds = Mesh.GetBounds();
+			float MeshWidth = Bounds.Width();
+			float MeshHeight = Bounds.Height();
+			FVector3d Center = Bounds.Center();
+
+			UE_LOG(LogTemp, Log, TEXT("MeshSize: %1.3f, %1.3f"), MeshWidth, MeshHeight);
+
+			//TODO: optimize loop
 			ParallelFor(Mesh.MaxVertexID(), [&](int32 vid)
 			{
 				if (Mesh.IsVertex(vid))
 				{
 					FVector3d Pos = Mesh.GetVertex(vid);
 
-					//TODO: deform along Z axis
+					//Normalize sample
+					float XSample = (Pos.X + (MeshHeight / 2)) / MeshHeight * TextureHeight;
+					float YSample = (Pos.Y + (MeshWidth / 2)) / MeshWidth * TextureWidth;
+
+					//UE_LOG(LogTemp, Log, TEXT("Sample: %1.3f, %1.3f"), XSample, YSample);
+
+					float UnscaledZ = HeightAtPixel(XSample, YSample, TextureDataPointer, TextureHeight, TextureWidth, BytesPerPixel);
+
 					//TODO: support vector deform
 
-					//REFS
-					/*float Distance = (Pos - FromWorldLocation).Length();
+					//Apply new delta
+					FVector3d NewPos = Pos;
+					NewPos.Z = Pos.Z + UnscaledZ * ZScale;
 
-					if (Distance < Radius)
-					{
-						float Ratio = FMath::Clamp((Radius - Distance) / Radius, Hardness, 1.f);	//hardness makes a bottom clamp
-						float Scale = Ratio * Magnitude;	//magnitude scale whole operation
-						//float Displacement = (ToWorldLocation - FromWorldLocation).Size();
-						FVector3d NewPos = Pos + ((ToWorldLocation - FromWorldLocation) * Scale);
-						Mesh.SetVertex(vid, NewPos);
-					}*/
-
+					Mesh.SetVertex(vid, NewPos);
 				}
 			});
 		});
 	}
 
 	//re-lock heightmap
+	HeightmapTexture->PlatformData->Mips[0].BulkData.Unlock();
 
 	return MeshObj;
 }
@@ -209,3 +259,5 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::SmoothMeshUniform(UGeneratedMesh
 
 	return MeshObj;
 }
+
+
