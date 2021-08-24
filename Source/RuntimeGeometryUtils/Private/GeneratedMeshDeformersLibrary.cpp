@@ -121,7 +121,7 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshHeightmap(UGeneratedMe
 			float MeshHeight = Bounds.Height();
 			FVector3d Center = Bounds.Center();
 
-			UE_LOG(LogTemp, Log, TEXT("MeshSize: %1.3f, %1.3f"), MeshWidth, MeshHeight);
+			//UE_LOG(LogTemp, Log, TEXT("MeshSize: %1.3f, %1.3f"), MeshWidth, MeshHeight);
 
 			//TODO: optimize loop
 			ParallelFor(Mesh.MaxVertexID(), [&](int32 vid)
@@ -221,6 +221,79 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinNoiseNormal(UGen
 
 
 
+
+UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinAlongAxisNormal(UGeneratedMesh* MeshObj, float Magnitude /*= 1*/, float Frequency /*= 1*/, FVector FrequencyShift /*= FVector(0, 0, 0)*/, int RandomSeed /*= 31337*/, FVector DirectionNormal /*= FVector(0, 0, 1)*/)
+{
+	if (MeshObj)
+	{
+		MeshObj->EditMeshInPlace([&](FDynamicMesh3& Mesh)
+			{
+				FMath::SRandInit(RandomSeed);
+				const float RandomOffset = 10000.0f * FMath::SRand();
+				FVector3d Offset(RandomOffset, RandomOffset, RandomOffset);
+				Offset += (FVector3d)FrequencyShift;
+
+				FMeshNormals Normals(&Mesh);
+				Normals.ComputeVertexNormals();
+
+				ParallelFor(Mesh.MaxVertexID(), [&](int32 vid)
+					{
+						if (Mesh.IsVertex(vid))
+						{
+							FVector3d Pos = Mesh.GetVertex(vid);
+							FVector NoisePos = (FVector)((double)Frequency * (Pos + Offset));
+							float Displacement = Magnitude * FMath::PerlinNoise3D(Frequency * NoisePos);
+							FVector VertexNormal = (FVector)Normals[vid];
+
+							if (acosf(VertexNormal | DirectionNormal) < (PI/4))
+							{
+								FVector3d NewPos = Pos + Displacement * VertexNormal;
+								Mesh.SetVertex(vid, NewPos);
+							}							
+						}
+					});
+			});
+	}
+
+	return MeshObj;
+}
+
+
+UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinNormalPastHeight(UGeneratedMesh* MeshObj, float Magnitude /*= 1*/, float Frequency /*= 1*/, FVector FrequencyShift /*= FVector(0, 0, 0)*/, int RandomSeed /*= 31337*/, FVector HeightVector /*= FVector(0, 0, 1)*/)
+{
+	if (MeshObj)
+	{
+		MeshObj->EditMeshInPlace([&](FDynamicMesh3& Mesh)
+			{
+				FMath::SRandInit(RandomSeed);
+				const float RandomOffset = 10000.0f * FMath::SRand();
+				FVector3d Offset(RandomOffset, RandomOffset, RandomOffset);
+				Offset += (FVector3d)FrequencyShift;
+
+				FMeshNormals Normals(&Mesh);
+				Normals.ComputeVertexNormals();
+
+				ParallelFor(Mesh.MaxVertexID(), [&](int32 vid)
+					{
+						if (Mesh.IsVertex(vid))
+						{
+							FVector3d Pos = Mesh.GetVertex(vid);
+							FVector NoisePos = (FVector)((double)Frequency * (Pos + Offset));
+							float Displacement = Magnitude * FMath::PerlinNoise3D(Frequency * NoisePos);
+							FVector VertexNormal = (FVector)Normals[vid];
+
+							if (Pos.Z >= HeightVector.Z)
+							{
+								FVector3d NewPos = Pos + Displacement * FVector(0,0,1);
+								Mesh.SetVertex(vid, NewPos);
+							}
+						}
+					});
+			});
+	}
+
+	return MeshObj;
+}
 
 UGeneratedMesh* UGeneratedMeshDeformersLibrary::SmoothMeshUniform(UGeneratedMesh* MeshObj, float Alpha, int32 Iterations)
 {
