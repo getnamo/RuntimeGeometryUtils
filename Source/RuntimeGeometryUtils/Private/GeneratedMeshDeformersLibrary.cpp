@@ -70,7 +70,10 @@ float UGeneratedMeshDeformersLibrary::HeightAtPixel(float X, float Y, void* Text
 	uint8* MipData = static_cast<uint8*>(TexturePointer);
 
 	//We assume texture pointer is locked for read...
-	bool bValidSample = X <= TextureHeight && Y <= TextureWidth;
+	int32 YRounded = FMath::RoundToInt(Y);
+	int32 XRounded = FMath::RoundToInt(X);
+
+	bool bValidSample = XRounded < TextureHeight && YRounded < TextureWidth;
 
 	if (!bValidSample)
 	{
@@ -78,8 +81,7 @@ float UGeneratedMeshDeformersLibrary::HeightAtPixel(float X, float Y, void* Text
 	}
 
 	//BytesPerPixel
-
-	int32 SampleIndex = ((TextureWidth * FMath::RoundToInt(Y)) + FMath::RoundToInt(X)) * BytesPerPixel;
+	int32 SampleIndex = ((TextureWidth * YRounded) + XRounded) * BytesPerPixel;
 	
 	if (SampleIndex >= (BytesPerPixel * TextureHeight * TextureWidth))
 	{
