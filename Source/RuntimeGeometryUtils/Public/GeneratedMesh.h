@@ -366,7 +366,7 @@ public:
 
 protected:
 	UPROPERTY()
-	int32 MeshCountSafetyThreshold = 1000;
+	int32 MeshCountSafetyThreshold = 2000;
 
 	/** Meshes in the pool that are available */
 	UPROPERTY()
