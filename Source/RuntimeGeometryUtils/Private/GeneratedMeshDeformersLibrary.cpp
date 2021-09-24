@@ -335,4 +335,37 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::SmoothMeshUniform(UGeneratedMesh
 	return MeshObj;
 }
 
+//largely inspired from https://github.com/SebLague/Hydraulic-Erosion/blob/master/Assets/Scripts/Erosion.cs
+void UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* OutTexture, UTexture2D* InTexture, int32 Iterations /*= 1*/)
+{
+	//temp params, move to 
+	int32 Seed = 1;
+	int32 ErosionRadius = 3;
+	float Inertia = .05f; // At zero, water will instantly change direction to flow downhill. At 1, water will never change direction. 
+	float SedimentCapacityFactor = 4; // Multiplier for how much sediment a droplet can carry
+	float MinSedimentCapacity = 0.01f; // Used to prevent carry capacity getting too close to zero on flatter terrain
+	float ErodeSpeed = 0.3f;
+	float DepositSpeed = 0.3f;
+
+	float EvaporateSpeed = 0.01f;
+	float Gravity = 4;
+	int32 MaxDropletLifetime = 30;
+
+	float InitialWaterVolume = 1;
+	float InitialSpeed = 1;
+
+	int32 CurrentSeed;
+	int32 CurrentErosionRadius;
+	int32 CurrentMapSize;
+
+	FRandomStream Prng = FRandomStream(Seed);
+	CurrentSeed = Seed;
+	CurrentErosionRadius = ErosionRadius;
+
+	int32 MapSize = InTexture->PlatformData->Mips[0].SizeX;
+
+	CurrentMapSize = MapSize;
+	
+}
+
 

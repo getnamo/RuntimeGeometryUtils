@@ -65,6 +65,12 @@ public:
 	UFUNCTION(BlueprintCallable) static UPARAM(DisplayName = "Input Mesh")
 	UGeneratedMesh* SmoothMeshUniform(UGeneratedMesh* Mesh, float Alpha = 0.3, int32 Iterations = 1);
 
+	/**
+	* Erode a heightmap texture with hydraulic erosion given a number of iterations
+	*/
+	UFUNCTION(BlueprintCallable) static UPARAM(DisplayName = "Input Mesh")
+	void ErodeHeightMapTexture(UTexture2D* OutTexture, UTexture2D* InTexture, int32 Iterations = 1);
+
 
 protected:
 	/** 
