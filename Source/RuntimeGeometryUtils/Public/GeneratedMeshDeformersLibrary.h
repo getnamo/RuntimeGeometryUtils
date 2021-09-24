@@ -16,7 +16,7 @@ struct FHeightAndGradient
 
 	UPROPERTY()
 	float GradientY;
-}
+};
 
 /**
  * A BP Library of functions for applying deformations to the vertices of a UGeneratedMesh
@@ -93,5 +93,5 @@ protected:
 	static float HeightAtPixel(float X, float Y, void* TexturePointer, int32 TextureHeight, int32 TextureWidth, int32 BytesPerPixel = 4);
 
 	/* Calculate gradient from map */
-	static FHeightAndGradient CalculateHeightAndGradient(float* Nodes, int32 MapSize, float PosX, float PosY);
+	static FHeightAndGradient CalculateHeightAndGradient(TArray<float>& Nodes, int32 MapSize, float PosX, float PosY);
 };

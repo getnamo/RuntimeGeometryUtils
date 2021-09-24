@@ -335,15 +335,65 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::SmoothMeshUniform(UGeneratedMesh
 	return MeshObj;
 }
 
+void InitializeBrushIndices(int MapSize, int Radius, TArray<TArray<int32>>& ErosionBrushIndices, TArray<TArray<float>>& ErosionBrushWeights) {
+	//ErosionBrushIndices = new int[mapSize * mapSize][];
+	//ErosionBrushWeights = new float[mapSize * mapSize][];
+	ErosionBrushIndices.SetNum(MapSize);
+	ErosionBrushWeights.SetNum(MapSize);
 
-FHeightAndGradient UGeneratedMeshDeformersLibrary::CalculateHeightAndGradient(float* Nodes, int32 MapSize, float PosX, float PosY)
+	int* XOffsets = new int[Radius * Radius * 4];
+	int* YOffsets = new int[Radius * Radius * 4];
+	float* Weights = new float[Radius * Radius * 4];
+	float WeightSum = 0;
+	int AddIndex = 0;
+
+	for (int i = 0; i < ErosionBrushIndices.Num(); i++) {
+		int CentreX = i % MapSize;
+		int CentreY = i / MapSize;
+
+		if (CentreY <= Radius || CentreY >= MapSize - Radius || CentreX <= Radius + 1 || CentreX >= MapSize - Radius) {
+			WeightSum = 0;
+			AddIndex = 0;
+			for (int Y = -Radius; Y <= Radius; Y++) {
+				for (int X = -Radius; X <= Radius; X++) {
+					float SqrDst = X * X + Y * Y;
+					if (SqrDst < Radius * Radius) {
+						int CoordX = CentreX + X;
+						int CoordY = CentreY + Y;
+
+						if (CoordX >= 0 && CoordX < MapSize && CoordY >= 0 && CoordY < MapSize) {
+							float Weight = 1 - FMath::Sqrt(SqrDst) / Radius;
+							WeightSum += Weight;
+							Weights[AddIndex] = Weight;
+							XOffsets[AddIndex] = X;
+							YOffsets[AddIndex] = Y;
+							AddIndex++;
+						}
+					}
+				}
+			}
+		}
+
+		int NumEntries = AddIndex;
+		ErosionBrushIndices[i].SetNum(NumEntries);
+		ErosionBrushWeights[i].SetNum(NumEntries);
+
+		for (int j = 0; j < NumEntries; j++) {
+			ErosionBrushIndices[i][j] = (YOffsets[j] + CentreY) * MapSize + XOffsets[j] + CentreX;
+			ErosionBrushWeights[i][j] = Weights[j] / WeightSum;
+		}
+	}
+}
+
+
+FHeightAndGradient UGeneratedMeshDeformersLibrary::CalculateHeightAndGradient(TArray<float>& Nodes, int32 MapSize, float PosX, float PosY)
 {
 	int32 CoordX = (int32)PosX;
 	int32 CoordY = (int32)PosY;
 
 	// Calculate droplet's offset inside the cell (0,0) = at NW node, (1,1) = at SE node
 	float X = PosX - CoordX;
-	float X = PosY - CoordY;
+	float Y = PosY - CoordY;
 
 	// Calculate heights of the four nodes of the droplet's cell
 	int32 NodeIndexNW = CoordY * MapSize + CoordX;
@@ -353,11 +403,11 @@ FHeightAndGradient UGeneratedMeshDeformersLibrary::CalculateHeightAndGradient(fl
 	float HeightSE = Nodes[NodeIndexNW + MapSize + 1];
 
 	// Calculate droplet's direction of flow with bilinear interpolation of height difference along the edges
-	float GradientX = (HeightNE - HeightNW) * (1 - X) + (HeightSE - HeightSW) * X;
+	float GradientX = (HeightNE - HeightNW) * (1 - Y) + (HeightSE - HeightSW) * Y;
 	float GradientY = (HeightSW - HeightNW) * (1 - X) + (HeightSE - HeightNE) * X;
 
 	// Calculate height with bilinear interpolation of the heights of the nodes of the cell
-	float Height = HeightNW * (1 - X) * (1 - X) + HeightNE * X * (1 - X) + HeightSW * (1 - X) * X + HeightSE * X * X;
+	float Height = HeightNW * (1 - X) * (1 - Y) + HeightNE * X * (1 - Y) + HeightSW * (1 - X) * Y + HeightSE * X * Y;
 
 	FHeightAndGradient Result;
 	Result.Height = Height;
@@ -394,12 +444,21 @@ void UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* OutTextur
 	CurrentSeed = Seed;
 	CurrentErosionRadius = ErosionRadius;
 
+	TArray<TArray<int32>> ErosionBrushIndices;
+	TArray<TArray<float>> ErosionBrushWeights;
+
 	//Assuming it's one dim size
 	int32 MapSize = InTexture->PlatformData->Mips[0].SizeX;
+
+	InitializeBrushIndices(MapSize, ErosionRadius, ErosionBrushIndices, ErosionBrushWeights);
 
 	CurrentMapSize = MapSize;
 
 	//TODO: get pixels to float pointer
+
+	//convert to 2D, 1D map?
+	TArray<float> Map;
+
 
 	//array type access helpers
 	
@@ -423,11 +482,11 @@ void UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* OutTextur
 			int32 NodeY = (int)PosY;
 			int32 DropletIndex = NodeY * MapSize + NodeX;
 			// Calculate droplet's offset inside the cell (0,0) = at NW node, (1,1) = at SE node
-			float cellOffsetX = PosX - NodeX;
-			float cellOffsetY = PosY - NodeY;
+			float CellOffsetX = PosX - NodeX;
+			float CellOffsetY = PosY - NodeY;
 
 			// Calculate droplet's height and direction of flow with bilinear interpolation of surrounding heights
-			FHeightAndGradient HeightAndGradient = CalculateHeightAndGradient(map, MapSize, PosX, PosY);
+			FHeightAndGradient HeightAndGradient = CalculateHeightAndGradient(Map, MapSize, PosX, PosY);
 
 			// Update the droplet's direction and position (move position 1 unit regardless of speed)
 			DirX = (DirX * Inertia - HeightAndGradient.GradientX * (1 - Inertia));
@@ -449,7 +508,7 @@ void UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* OutTextur
 			}
 
 			// Find the droplet's new height and calculate the deltaHeight
-			float NewHeight = CalculateHeightAndGradient(map, MapSize, PosX, PosY).Height;
+			float NewHeight = CalculateHeightAndGradient(Map, MapSize, PosX, PosY).Height;
 			float DeltaHeight = NewHeight - HeightAndGradient.Height;
 
 			// Calculate the droplet's sediment capacity (higher when moving fast down a slope and contains lots of water)
@@ -464,10 +523,10 @@ void UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* OutTextur
 
 				// Add the sediment to the four nodes of the current cell using bilinear interpolation
 				// Deposition is not distributed over a radius (like erosion) so that it can fill small pits
-				map[DropletIndex] += AmountToDeposit * (1 - cellOffsetX) * (1 - cellOffsetY);
-				map[DropletIndex + 1] += AmountToDeposit * cellOffsetX * (1 - cellOffsetY);
-				map[DropletIndex + MapSize] += AmountToDeposit * (1 - cellOffsetX) * cellOffsetY;
-				map[DropletIndex + MapSize + 1] += AmountToDeposit * cellOffsetX * cellOffsetY;
+				Map[DropletIndex] += AmountToDeposit * (1 - CellOffsetX) * (1 - CellOffsetY);
+				Map[DropletIndex + 1] += AmountToDeposit * CellOffsetX * (1 - CellOffsetY);
+				Map[DropletIndex + MapSize] += AmountToDeposit * (1 - CellOffsetX) * CellOffsetY;
+				Map[DropletIndex + MapSize + 1] += AmountToDeposit * CellOffsetX * CellOffsetY;
 
 			}
 			else {
@@ -476,12 +535,12 @@ void UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* OutTextur
 				float AmountToErode = FMath::Min((SedimentCapacity - Sediment) * ErodeSpeed, -DeltaHeight);
 
 				// Use erosion brush to erode from all nodes inside the droplet's erosion radius
-				for (int32 BrushPointIndex = 0; BrushPointIndex < ErosionBrushIndices[DropletIndex].Length; BrushPointIndex++) 
+				for (int32 BrushPointIndex = 0; BrushPointIndex < ErosionBrushIndices[DropletIndex].Num(); BrushPointIndex++) 
 				{
 					int32 NodeIndex = ErosionBrushIndices[DropletIndex][BrushPointIndex];
 					float WeighedErodeAmount = AmountToErode * ErosionBrushWeights[DropletIndex][BrushPointIndex];
-					float DeltaSediment = (map[NodeIndex] < WeighedErodeAmount) ? map[NodeIndex] : WeighedErodeAmount;
-					map[NodeIndex] -= DeltaSediment;
+					float DeltaSediment = (Map[NodeIndex] < WeighedErodeAmount) ? Map[NodeIndex] : WeighedErodeAmount;
+					Map[NodeIndex] -= DeltaSediment;
 					Sediment += DeltaSediment;
 				}
 			}
