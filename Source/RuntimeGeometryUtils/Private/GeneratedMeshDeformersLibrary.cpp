@@ -190,7 +190,7 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshAxisSinWaveRadial(UGen
 
 
 
-UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinNoiseNormal(UGeneratedMesh* MeshObj, float Magnitude, float Frequency, FVector FrequencyShift, int RandomSeed)
+UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinNoiseNormal(UGeneratedMesh* MeshObj, float Magnitude, float Frequency, FVector FrequencyShift, int32 RandomSeed)
 {
 	if (MeshObj)
 	{
@@ -224,7 +224,7 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinNoiseNormal(UGen
 
 
 
-UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinAlongAxisNormal(UGeneratedMesh* MeshObj, float Magnitude /*= 1*/, float Frequency /*= 1*/, FVector FrequencyShift /*= FVector(0, 0, 0)*/, int RandomSeed /*= 31337*/, FVector DirectionNormal /*= FVector(0, 0, 1)*/)
+UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinAlongAxisNormal(UGeneratedMesh* MeshObj, float Magnitude /*= 1*/, float Frequency /*= 1*/, FVector FrequencyShift /*= FVector(0, 0, 0)*/, int32 RandomSeed /*= 31337*/, FVector DirectionNormal /*= FVector(0, 0, 1)*/)
 {
 	if (MeshObj)
 	{
@@ -261,7 +261,7 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinAlongAxisNormal(
 }
 
 
-UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinNormalPastHeight(UGeneratedMesh* MeshObj, float Magnitude /*= 1*/, float Frequency /*= 1*/, FVector FrequencyShift /*= FVector(0, 0, 0)*/, int RandomSeed /*= 31337*/, FVector HeightVector /*= FVector(0, 0, 1)*/)
+UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinNormalPastHeight(UGeneratedMesh* MeshObj, float Magnitude /*= 1*/, float Frequency /*= 1*/, FVector FrequencyShift /*= FVector(0, 0, 0)*/, int32 RandomSeed /*= 31337*/, FVector HeightVector /*= FVector(0, 0, 1)*/)
 {
 	if (MeshObj)
 	{
@@ -335,13 +335,45 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::SmoothMeshUniform(UGeneratedMesh
 	return MeshObj;
 }
 
-//largely inspired from https://github.com/SebLague/Hydraulic-Erosion/blob/master/Assets/Scripts/Erosion.cs
+
+FHeightAndGradient UGeneratedMeshDeformersLibrary::CalculateHeightAndGradient(float* Nodes, int32 MapSize, float PosX, float PosY)
+{
+	int32 CoordX = (int32)PosX;
+	int32 CoordY = (int32)PosY;
+
+	// Calculate droplet's offset inside the cell (0,0) = at NW node, (1,1) = at SE node
+	float X = PosX - CoordX;
+	float X = PosY - CoordY;
+
+	// Calculate heights of the four nodes of the droplet's cell
+	int32 NodeIndexNW = CoordY * MapSize + CoordX;
+	float HeightNW = Nodes[NodeIndexNW];
+	float HeightNE = Nodes[NodeIndexNW + 1];
+	float HeightSW = Nodes[NodeIndexNW + MapSize];
+	float HeightSE = Nodes[NodeIndexNW + MapSize + 1];
+
+	// Calculate droplet's direction of flow with bilinear interpolation of height difference along the edges
+	float GradientX = (HeightNE - HeightNW) * (1 - X) + (HeightSE - HeightSW) * X;
+	float GradientY = (HeightSW - HeightNW) * (1 - X) + (HeightSE - HeightNE) * X;
+
+	// Calculate height with bilinear interpolation of the heights of the nodes of the cell
+	float Height = HeightNW * (1 - X) * (1 - X) + HeightNE * X * (1 - X) + HeightSW * (1 - X) * X + HeightSE * X * X;
+
+	FHeightAndGradient Result;
+	Result.Height = Height;
+	Result.GradientX = GradientX;
+	Result.GradientY = GradientY;
+
+	return Result;
+}
+
+//Largely inspired from https://github.com/SebLague/Hydraulic-Erosion/blob/master/Assets/Scripts/Erosion.cs
 void UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* OutTexture, UTexture2D* InTexture, int32 Iterations /*= 1*/)
 {
-	//temp params, move to 
+	//Temp params, todo: move to struct where we can tweak these params
 	int32 Seed = 1;
 	int32 ErosionRadius = 3;
-	float Inertia = .05f; // At zero, water will instantly change direction to flow downhill. At 1, water will never change direction. 
+	float Inertia = 0.05f; // At zero, water will instantly change direction to flow downhill. At 1, water will never change direction. 
 	float SedimentCapacityFactor = 4; // Multiplier for how much sediment a droplet can carry
 	float MinSedimentCapacity = 0.01f; // Used to prevent carry capacity getting too close to zero on flatter terrain
 	float ErodeSpeed = 0.3f;
@@ -362,10 +394,105 @@ void UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* OutTextur
 	CurrentSeed = Seed;
 	CurrentErosionRadius = ErosionRadius;
 
+	//Assuming it's one dim size
 	int32 MapSize = InTexture->PlatformData->Mips[0].SizeX;
 
 	CurrentMapSize = MapSize;
+
+	//TODO: get pixels to float pointer
+
+	//array type access helpers
 	
+	//Start algo
+
+	
+	for (int32 Iteration = 0; Iteration < Iterations; Iteration++) 
+	{
+		// Create water droplet at random point on map
+		float PosX = Prng.FRandRange(0, MapSize - 1);
+		float PosY = Prng.FRandRange(0, MapSize - 1);
+		float DirX = 0;
+		float DirY = 0;
+		float Speed = InitialSpeed;
+		float Water = InitialWaterVolume;
+		float Sediment = 0;
+
+		for (int32 Lifetime = 0; Lifetime < MaxDropletLifetime; Lifetime++) 
+		{
+			int32 NodeX = (int)PosX;
+			int32 NodeY = (int)PosY;
+			int32 DropletIndex = NodeY * MapSize + NodeX;
+			// Calculate droplet's offset inside the cell (0,0) = at NW node, (1,1) = at SE node
+			float cellOffsetX = PosX - NodeX;
+			float cellOffsetY = PosY - NodeY;
+
+			// Calculate droplet's height and direction of flow with bilinear interpolation of surrounding heights
+			FHeightAndGradient HeightAndGradient = CalculateHeightAndGradient(map, MapSize, PosX, PosY);
+
+			// Update the droplet's direction and position (move position 1 unit regardless of speed)
+			DirX = (DirX * Inertia - HeightAndGradient.GradientX * (1 - Inertia));
+			DirY = (DirY * Inertia - HeightAndGradient.GradientY * (1 - Inertia));
+			// Normalize direction
+			float len = FMath::Sqrt(DirX * DirX + DirY * DirY);
+			if (len != 0) 
+			{
+				DirX /= len;
+				DirY /= len;
+			}
+			PosX += DirX;
+			PosY += DirY;
+
+			// Stop simulating droplet if it's not moving or has flowed over edge of map
+			if ((DirX == 0 && DirY == 0) || PosX < 0 || PosX >= MapSize - 1 || PosY < 0 || PosY >= MapSize - 1) 
+			{
+				break;
+			}
+
+			// Find the droplet's new height and calculate the deltaHeight
+			float NewHeight = CalculateHeightAndGradient(map, MapSize, PosX, PosY).Height;
+			float DeltaHeight = NewHeight - HeightAndGradient.Height;
+
+			// Calculate the droplet's sediment capacity (higher when moving fast down a slope and contains lots of water)
+			float SedimentCapacity = FMath::Max(-DeltaHeight * Speed * Water * SedimentCapacityFactor, MinSedimentCapacity);
+
+			// If carrying more sediment than capacity, or if flowing uphill:
+			if (Sediment > SedimentCapacity || DeltaHeight > 0) 
+			{
+				// If moving uphill (deltaHeight > 0) try fill up to the current height, otherwise deposit a fraction of the excess sediment
+				float AmountToDeposit = (DeltaHeight > 0) ? FMath::Min(DeltaHeight, Sediment) : (Sediment - SedimentCapacity) * DepositSpeed;
+				Sediment -= AmountToDeposit;
+
+				// Add the sediment to the four nodes of the current cell using bilinear interpolation
+				// Deposition is not distributed over a radius (like erosion) so that it can fill small pits
+				map[DropletIndex] += AmountToDeposit * (1 - cellOffsetX) * (1 - cellOffsetY);
+				map[DropletIndex + 1] += AmountToDeposit * cellOffsetX * (1 - cellOffsetY);
+				map[DropletIndex + MapSize] += AmountToDeposit * (1 - cellOffsetX) * cellOffsetY;
+				map[DropletIndex + MapSize + 1] += AmountToDeposit * cellOffsetX * cellOffsetY;
+
+			}
+			else {
+				// Erode a fraction of the droplet's current carry capacity.
+				// Clamp the erosion to the change in height so that it doesn't dig a hole in the terrain behind the droplet
+				float AmountToErode = FMath::Min((SedimentCapacity - Sediment) * ErodeSpeed, -DeltaHeight);
+
+				// Use erosion brush to erode from all nodes inside the droplet's erosion radius
+				for (int32 BrushPointIndex = 0; BrushPointIndex < ErosionBrushIndices[DropletIndex].Length; BrushPointIndex++) 
+				{
+					int32 NodeIndex = ErosionBrushIndices[DropletIndex][BrushPointIndex];
+					float WeighedErodeAmount = AmountToErode * ErosionBrushWeights[DropletIndex][BrushPointIndex];
+					float DeltaSediment = (map[NodeIndex] < WeighedErodeAmount) ? map[NodeIndex] : WeighedErodeAmount;
+					map[NodeIndex] -= DeltaSediment;
+					Sediment += DeltaSediment;
+				}
+			}
+
+			// Update droplet's speed and water content
+			Speed = FMath::Sqrt(Speed * Speed + DeltaHeight * Gravity);
+			Water *= (1 - EvaporateSpeed);
+		}
+	}
+
+	//*/
 }
 
 
