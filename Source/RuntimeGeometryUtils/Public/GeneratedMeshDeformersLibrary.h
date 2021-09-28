@@ -18,6 +18,73 @@ struct FHeightAndGradient
 	float GradientY;
 };
 
+USTRUCT(BlueprintType)
+struct FHydroErosionParams
+{
+	GENERATED_USTRUCT_BODY();
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
+	int32 Iterations;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
+	int32 Seed;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
+	int32 ErosionRadius;
+
+	// At zero, water will instantly change direction to flow downhill. At 1, water will never change direction. 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
+	float Inertia; 
+	
+	// Multiplier for how much sediment a droplet can carry
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
+	float SedimentCapacityFactor; 
+	
+	// Used to prevent carry capacity getting too close to zero on flatter terrain
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
+	float MinSedimentCapacity; 
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
+	float ErodeSpeed;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
+	float DepositSpeed;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
+	float EvaporateSpeed;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
+	float Gravity;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
+	int32 MaxDropletLifetime;
+
+	//Debug param: If true it will override output with 1.f and 0.f for deposit/erode
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
+	bool bPreviewDropletErosionPaths;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
+	bool bPreviewDropletDepositionPaths;
+
+	FHydroErosionParams()
+	{
+		Iterations = 1;
+		Seed = 1;
+		ErosionRadius = 3;
+		Inertia = 0.05f;
+		SedimentCapacityFactor = 4;
+		MinSedimentCapacity = 0.01f;
+		ErodeSpeed = 0.3f;
+		DepositSpeed = 0.3f;
+		EvaporateSpeed = 0.01f;
+		Gravity = 4;
+		MaxDropletLifetime = 30;
+
+		bPreviewDropletErosionPaths = false;
+		bPreviewDropletDepositionPaths = false;
+	}
+};
+
 /**
  * A BP Library of functions for applying deformations to the vertices of a UGeneratedMesh
  */
@@ -82,9 +149,19 @@ public:
 	/**
 	* Erode a heightmap texture with hydraulic erosion given a number of iterations
 	*/
-	UFUNCTION(BlueprintCallable) static UPARAM(DisplayName = "Input Mesh")
-	void ErodeHeightMapTexture(UTexture2D* OutTexture, UTexture2D* InTexture, int32 Iterations = 1);
+	UFUNCTION(BlueprintCallable) static
+	UTexture2D* ErodeHeightMapTexture(UTexture2D* InTexture, const FHydroErosionParams& Params);
 
+	UFUNCTION(BlueprintCallable) static
+	UTexture2D* GenerateTransientCopy(UTexture2D* InTexture);
+
+
+	//copies from https://github.com/getnamo/tensorflow-ue4/blob/master/Source/TensorFlow/Private/TensorFlowBlueprintLibrary.cpp
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToGrayScaleFloatArray (Texture2D)", BlueprintAutocast), Category = "Utilities|TensorFlow")
+	static TArray<float> Conv_GreyScaleTexture2DToFloatArray(UTexture2D* InTexture);
+
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToTexture2D (Grayscale Array)", BlueprintAutocast), Category = "Utilities|TensorFlow")
+	static UTexture2D* Conv_GrayScaleFloatArrayToTexture2D(const TArray<float>& InFloatArray, const FVector2D Size = FVector2D(0, 0));
 
 protected:
 	/** 
