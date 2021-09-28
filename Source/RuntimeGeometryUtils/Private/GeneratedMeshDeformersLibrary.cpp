@@ -478,6 +478,12 @@ UTexture2D* UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* In
 	
 	TArray<float> Map = Conv_GreyScaleTexture2DToFloatArray(InTexture);
 
+	if (Map.Num() == 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ErodeHeightMapTexture Couldn't import texture, skipped."));
+		return nullptr;
+	}
+
 	/*void* TextureDataPointer = InTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY);
 	TArray<float> Map;
 	Map.Reserve(MapSize * MapSize);
@@ -624,14 +630,16 @@ UTexture2D* UGeneratedMeshDeformersLibrary::GenerateTransientCopy(UTexture2D* In
 TArray<float> UGeneratedMeshDeformersLibrary::Conv_GreyScaleTexture2DToFloatArray(UTexture2D* InTexture)
 {
 	TArray<float> FloatArray;
-	FloatArray.SetNum(InTexture->GetSizeX() * InTexture->GetSizeY());
 
+	//sanity check for types we support atm
 	if (InTexture->PlatformData->PixelFormat != PF_B8G8R8A8 &&
 		InTexture->PlatformData->PixelFormat != PF_R8G8B8A8)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Invalid float array conversion not yet supported for requested pixel format."));
 		return FloatArray;
 	}
+
+	FloatArray.SetNum(InTexture->GetSizeX() * InTexture->GetSizeY());
 
 	// Lock the texture so it can be read
 	uint8* MipData = static_cast<uint8*>(InTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
