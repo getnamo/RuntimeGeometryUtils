@@ -341,13 +341,32 @@ void UGeneratedMeshDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& 
 	FVector NoisePos;
 	NoisePos.Z = 0;
 
+	int32 MapSize = (int32)FMath::Sqrt(Map.Num());
+
 	//Set X/Y from loop over square texture
 
-	//Grab displacement
-	float Displacement = Magnitude * FMath::PerlinNoise3D(Frequency * NoisePos);
+	for (int32 Y = 0; Y < MapSize; Y++)
+	{
+		for (int32 X = 0; X < MapSize; X++)
+		{
+			int32 Index = (Y * MapSize) + X;
 
-	//update map Value
-	//Map[xy] += Displacement;
+			NoisePos.X = (float)X;
+			NoisePos.Y = (float)Y;
+			float Displacement = Magnitude * FMath::PerlinNoise3D(Frequency * NoisePos);
+
+			Map[Index] += Displacement;
+		}
+	}
+}
+
+
+TArray<float> UGeneratedMeshDeformersLibrary::SquareFloatMapSized(int32 OneSideLength)
+{
+	TArray<float>Map;
+	Map.SetNumZeroed(OneSideLength * OneSideLength);
+
+	return Map;
 }
 
 void InitializeBrushIndices(int MapSize, int Radius, TArray<TArray<int32>>& ErosionBrushIndices, TArray<TArray<float>>& ErosionBrushWeights) {
@@ -464,20 +483,6 @@ UTexture2D* UGeneratedMeshDeformersLibrary::HydraulicErosionOnHeightTexture(UTex
 
 	//Run the erosion algorithm
 	HydraulicErosionOnHeightMap(Map, Params);
-
-	/*void* TextureDataPointer = InTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY);
-	TArray<float> Map;
-	Map.Reserve(MapSize * MapSize);
-
-	for (int32 i = 0; i < MapSize; i++)
-	{
-		for (int32 j = 0; j < MapSize; j++)
-		{
-			float Height = HeightAtPixel(j, i, TextureDataPointer, MapSize, MapSize);
-			Map.Add(Height);
-		}
-	}
-	InTexture->PlatformData->Mips[0].BulkData.Unlock();*/
 
 	//Copy back data to out texture (todo: fast update/edit in place)
 	return Conv_GrayScaleFloatArrayToTexture2D(Map, FVector2D(SizeX, SizeY));

@@ -151,6 +151,8 @@ public:
 	UFUNCTION(BlueprintCallable) static
 	void PerlinDeformMap(UPARAM(ref) TArray<float>& InOutHeightmap, float Magnitude = 1, float Frequency = 1, FVector FrequencyShift = FVector(0, 0, 0), int32 RandomSeed = 31337);
 
+	UFUNCTION(BlueprintCallable) static
+	TArray<float> SquareFloatMapSized(int32 OneSideLength);
 	/**
 	* Erode a heightmap texture with hydraulic erosion via HydraulicErosionOnHeightMap. Convenience wrapper for texture conversion
 	*/
