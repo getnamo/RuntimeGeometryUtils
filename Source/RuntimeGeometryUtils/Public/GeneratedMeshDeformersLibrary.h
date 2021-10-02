@@ -146,11 +146,20 @@ public:
 	UFUNCTION(BlueprintCallable) static UPARAM(DisplayName = "Input Mesh")
 	UGeneratedMesh* SmoothMeshUniform(UGeneratedMesh* Mesh, float Alpha = 0.3, int32 Iterations = 1);
 
+	//TODO: move these below to another bp library -> heightmap deform or 2.5 d deform ops
+
+	UFUNCTION(BlueprintCallable) static
+	void PerlinDeformMap(UPARAM(ref) TArray<float>& InOutHeightmap, float Magnitude = 1, float Frequency = 1, FVector FrequencyShift = FVector(0, 0, 0), int32 RandomSeed = 31337);
+
 	/**
-	* Erode a heightmap texture with hydraulic erosion given a number of iterations
+	* Erode a heightmap texture with hydraulic erosion via HydraulicErosionOnHeightMap. Convenience wrapper for texture conversion
 	*/
 	UFUNCTION(BlueprintCallable) static
-	UTexture2D* ErodeHeightMapTexture(UTexture2D* InTexture, const FHydroErosionParams& Params);
+	UTexture2D* HydraulicErosionOnHeightTexture(UTexture2D* InTexture, const FHydroErosionParams& Params);
+
+	/** Erode a heightmap with particle simulation defined by a float array in place */
+	UFUNCTION(BlueprintCallable) static
+	void HydraulicErosionOnHeightMap(UPARAM(ref) TArray<float>& InOutHeightmap, const FHydroErosionParams& Params);
 
 	UFUNCTION(BlueprintCallable) static
 	UTexture2D* GenerateTransientCopy(UTexture2D* InTexture);

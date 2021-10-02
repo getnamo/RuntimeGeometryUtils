@@ -335,6 +335,21 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::SmoothMeshUniform(UGeneratedMesh
 	return MeshObj;
 }
 
+
+void UGeneratedMeshDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& Map, float Magnitude /*= 1*/, float Frequency /*= 1*/, FVector FrequencyShift /*= FVector(0, 0, 0)*/, int32 RandomSeed /*= 31337*/)
+{
+	FVector NoisePos;
+	NoisePos.Z = 0;
+
+	//Set X/Y from loop over square texture
+
+	//Grab displacement
+	float Displacement = Magnitude * FMath::PerlinNoise3D(Frequency * NoisePos);
+
+	//update map Value
+	//Map[xy] += Displacement;
+}
+
 void InitializeBrushIndices(int MapSize, int Radius, TArray<TArray<int32>>& ErosionBrushIndices, TArray<TArray<float>>& ErosionBrushWeights) {
 	//ErosionBrushIndices = new int[mapSize * mapSize][];
 	//ErosionBrushWeights = new float[mapSize * mapSize][];
@@ -420,7 +435,7 @@ FHeightAndGradient UGeneratedMeshDeformersLibrary::CalculateHeightAndGradient(TA
 }
 
 //Largely inspired from https://github.com/SebLague/Hydraulic-Erosion/blob/master/Assets/Scripts/Erosion.cs
-UTexture2D* UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* InTexture, const FHydroErosionParams& Params /*= FHydroErosionParams()*/)
+UTexture2D* UGeneratedMeshDeformersLibrary::HydraulicErosionOnHeightTexture(UTexture2D* InTexture, const FHydroErosionParams& Params /*= FHydroErosionParams()*/)
 {
 	//only square textures
 	if (!InTexture)
@@ -436,46 +451,9 @@ UTexture2D* UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* In
 	{
 		UE_LOG(LogTemp, Warning, TEXT("ErodeHeightMapTexture: SizeX != SizeY, pass in square textures only, skipped."));
 		return nullptr;
-	}
-	
-	//Temp fixed params, todo: move to struct where we can tweak these params
-	/*int32 Seed = 1;
-	int32 ErosionRadius = 3;
-	float Inertia = 0.05f; // At zero, water will instantly change direction to flow downhill. At 1, water will never change direction. 
-	float SedimentCapacityFactor = 4; // Multiplier for how much sediment a droplet can carry
-	float MinSedimentCapacity = 0.01f; // Used to prevent carry capacity getting too close to zero on flatter terrain
-	float ErodeSpeed = 0.3f;
-	float DepositSpeed = 0.3f;
+	}	
 
-	float EvaporateSpeed = 0.01f;
-	float Gravity = 4;
-	int32 MaxDropletLifetime = 30;*/
-
-	float InitialWaterVolume = 1;
-	float InitialSpeed = 1;
-
-	int32 CurrentSeed;
-	int32 CurrentErosionRadius;
-	int32 CurrentMapSize;
-
-	FRandomStream Prng = FRandomStream(Params.Seed);
-	CurrentSeed = Params.Seed;
-	CurrentErosionRadius = Params.ErosionRadius;
-
-	TArray<TArray<int32>> ErosionBrushIndices;
-	TArray<TArray<float>> ErosionBrushWeights;
-
-	//Assuming it's one dim size
-	int32 MapSize = InTexture->PlatformData->Mips[0].SizeX;
-
-	InitializeBrushIndices(MapSize, Params.ErosionRadius, ErosionBrushIndices, ErosionBrushWeights);
-
-	CurrentMapSize = MapSize;
-
-	//TODO: get pixels to float pointer
-
-	//inefficient: copy over into float array for first functioning implementation
-	
+	//inefficient: copy over into float array for a first functioning implementation
 	TArray<float> Map = Conv_GreyScaleTexture2DToFloatArray(InTexture);
 
 	if (Map.Num() == 0)
@@ -483,6 +461,9 @@ UTexture2D* UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* In
 		UE_LOG(LogTemp, Warning, TEXT("ErodeHeightMapTexture Couldn't import texture, skipped."));
 		return nullptr;
 	}
+
+	//Run the erosion algorithm
+	HydraulicErosionOnHeightMap(Map, Params);
 
 	/*void* TextureDataPointer = InTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY);
 	TArray<float> Map;
@@ -497,7 +478,30 @@ UTexture2D* UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* In
 		}
 	}
 	InTexture->PlatformData->Mips[0].BulkData.Unlock();*/
-		
+
+	//Copy back data to out texture (todo: fast update/edit in place)
+	return Conv_GrayScaleFloatArrayToTexture2D(Map, FVector2D(SizeX, SizeY));
+}
+
+
+void UGeneratedMeshDeformersLibrary::HydraulicErosionOnHeightMap(UPARAM(ref) TArray<float>& Map, const FHydroErosionParams& Params)
+{
+	float InitialWaterVolume = 1;
+	float InitialSpeed = 1;
+
+	FRandomStream Prng = FRandomStream(Params.Seed);
+
+	TArray<TArray<int32>> ErosionBrushIndices;
+	TArray<TArray<float>> ErosionBrushWeights;
+
+	//this should always be a square texture
+
+	//todo: detect non-square texture by lack of square result
+	int32 MapSize = (int32)FMath::Sqrt(Map.Num());
+
+	//Todo: re-use this if possible
+	InitializeBrushIndices(MapSize, Params.ErosionRadius, ErosionBrushIndices, ErosionBrushWeights);
+	
 	//Start main algorithm loop
 	for (int32 Iteration = 0; Iteration < Params.Iterations; Iteration++)
 	{
@@ -510,7 +514,7 @@ UTexture2D* UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* In
 		float Water = InitialWaterVolume;
 		float Sediment = 0;
 
-		if (Iteration !=0 && Params.Iterations % Iteration == 5)
+		if (Iteration != 0 && Iteration % 10000 == 0)
 		{
 			UE_LOG(LogTemp, Log, TEXT("Iteration: %d/%d"), Iteration, Params.Iterations);
 		}
@@ -532,7 +536,7 @@ UTexture2D* UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* In
 			DirY = (DirY * Params.Inertia - HeightAndGradient.GradientY * (1 - Params.Inertia));
 			// Normalize direction
 			float Len = FMath::Sqrt(DirX * DirX + DirY * DirY);
-			if (Len != 0) 
+			if (Len != 0)
 			{
 				DirX /= Len;
 				DirY /= Len;
@@ -541,7 +545,7 @@ UTexture2D* UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* In
 			PosY += DirY;
 
 			// Stop simulating droplet if it's not moving or has flowed over edge of map
-			if ((DirX == 0 && DirY == 0) || PosX < 0 || PosX >= MapSize - 1 || PosY < 0 || PosY >= MapSize - 1) 
+			if ((DirX == 0 && DirY == 0) || PosX < 0 || PosX >= MapSize - 1 || PosY < 0 || PosY >= MapSize - 1)
 			{
 				break;
 			}
@@ -554,7 +558,7 @@ UTexture2D* UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* In
 			float SedimentCapacity = FMath::Max(-DeltaHeight * Speed * Water * Params.SedimentCapacityFactor, Params.MinSedimentCapacity);
 
 			// If carrying more sediment than capacity, or if flowing uphill:
-			if (Sediment > SedimentCapacity || DeltaHeight > 0) 
+			if (Sediment > SedimentCapacity || DeltaHeight > 0)
 			{
 				// If moving uphill (deltaHeight > 0) try fill up to the current height, otherwise deposit a fraction of the excess sediment
 				float AmountToDeposit = (DeltaHeight > 0) ? FMath::Min(DeltaHeight, Sediment) : (Sediment - SedimentCapacity) * Params.DepositSpeed;
@@ -586,7 +590,7 @@ UTexture2D* UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* In
 				//UE_LOG(LogTemp, Log, TEXT("Output: #%d Erode: %1.3f"), Iteration, AmountToErode);
 
 				// Use erosion brush to erode from all nodes inside the droplet's erosion radius
-				for (int32 BrushPointIndex = 0; BrushPointIndex < ErosionBrushIndices[DropletIndex].Num(); BrushPointIndex++) 
+				for (int32 BrushPointIndex = 0; BrushPointIndex < ErosionBrushIndices[DropletIndex].Num(); BrushPointIndex++)
 				{
 					int32 NodeIndex = ErosionBrushIndices[DropletIndex][BrushPointIndex];
 					float WeighedErodeAmount = AmountToErode * ErosionBrushWeights[DropletIndex][BrushPointIndex];
@@ -607,9 +611,6 @@ UTexture2D* UGeneratedMeshDeformersLibrary::ErodeHeightMapTexture(UTexture2D* In
 			Water *= (1 - Params.EvaporateSpeed);
 		}
 	}
-
-	//Copy back data to out texture (todo: fast update/edit in place)
-	return Conv_GrayScaleFloatArrayToTexture2D(Map, FVector2D(MapSize, MapSize));
 }
 
 UTexture2D* UGeneratedMeshDeformersLibrary::GenerateTransientCopy(UTexture2D* InTexture)
