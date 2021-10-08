@@ -353,7 +353,8 @@ void UGeneratedMeshDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& 
 
 			NoisePos.X = (float)X;
 			NoisePos.Y = (float)Y;
-			float Displacement = Magnitude * FMath::PerlinNoise3D(Frequency * NoisePos);
+			//float Displacement = Magnitude * FMath::PerlinNoise3D(Frequency * NoisePos);
+			float Displacement = Magnitude * (FMath::PerlinNoise2D(FVector2D(X,Y) * Frequency) + 1)/2;
 
 			Map[Index] += Displacement;
 		}
@@ -690,7 +691,7 @@ UTexture2D* UGeneratedMeshDeformersLibrary::Conv_GrayScaleFloatArrayToTexture2D(
 	for (int i = 0; i < InFloatArray.Num(); i++)
 	{
 		int MipPointer = i * 4;
-		int GreyValue = InFloatArray[i] * 255.f;
+		int GreyValue = FMath::Clamp(InFloatArray[i], 0.f, 1.f) * 255.f;
 		MipData[MipPointer] = GreyValue;
 		MipData[MipPointer + 1] = GreyValue;
 		MipData[MipPointer + 2] = GreyValue;
