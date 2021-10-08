@@ -18,6 +18,16 @@ struct FHeightAndGradient
 	float GradientY;
 };
 
+UENUM(BlueprintType)
+enum class EFloatAppendTypes : uint8
+{
+	None,
+	Add,
+	Subtract,
+	Multiply,
+	Divide
+};
+
 USTRUCT(BlueprintType)
 struct FHydroErosionParams
 {
@@ -165,6 +175,9 @@ public:
 
 	UFUNCTION(BlueprintCallable) static
 	UTexture2D* GenerateTransientCopy(UTexture2D* InTexture);
+
+	UFUNCTION(BlueprintCallable) static
+	void AppendAndRescale(UPARAM(ref) TArray<float>& InOutArray, const TArray<float>& Other, bool bNormalize = true, EFloatAppendTypes AppendType = EFloatAppendTypes::Add);
 
 
 	//copies from https://github.com/getnamo/tensorflow-ue4/blob/master/Source/TensorFlow/Private/TensorFlowBlueprintLibrary.cpp

@@ -634,6 +634,62 @@ UTexture2D* UGeneratedMeshDeformersLibrary::GenerateTransientCopy(UTexture2D* In
 	return TexturePointer;
 }
 
+
+void UGeneratedMeshDeformersLibrary::AppendAndRescale(UPARAM(ref) TArray<float>& InOutArray, const TArray<float>& Other, bool bNormalize /*= true*/, EFloatAppendTypes AppendType /*= EFloatAppendTypes::Add*/)
+{
+	if (InOutArray.Num() != Other.Num())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UGeneratedMeshDeformersLibrary::AppendAndRescale InOutArray and other size don't match. Skipped."))
+		return;
+	}
+
+	float Max = 0;
+	float Min = FLT_MAX;
+
+	//Loop one apply change
+	for (int32 i = 0; i < InOutArray.Num(); i++)
+	{
+		if (bNormalize)
+		{
+			if (InOutArray[i] < Min)
+			{
+				Min = InOutArray[i];
+			}
+			if (InOutArray[i] > Max)
+			{
+				Max = InOutArray[i];
+			}
+		}
+		if (AppendType == EFloatAppendTypes::Add)
+		{
+			InOutArray[i] += Other[i];
+		}
+		else if (AppendType == EFloatAppendTypes::Subtract)
+		{
+			InOutArray[i] -= Other[i];
+		}
+		else if (AppendType == EFloatAppendTypes::Multiply)
+		{
+			InOutArray[i] *= Other[i];
+		}
+		else if (AppendType == EFloatAppendTypes::Divide)
+		{
+			InOutArray[i] /= Other[i];
+		}
+	}
+
+	//loop 2, normalize result
+	if (bNormalize)
+	{
+		float Range = Max - Min;
+
+		for (int32 i = 0; i < InOutArray.Num(); i++)
+		{
+			InOutArray[i] = (InOutArray[i] - Min)/(Range);
+		}
+	}
+}
+
 TArray<float> UGeneratedMeshDeformersLibrary::Conv_GreyScaleTexture2DToFloatArray(UTexture2D* InTexture)
 {
 	TArray<float> FloatArray;
