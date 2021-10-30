@@ -10,13 +10,13 @@ struct FHeightAndGradient
 	GENERATED_USTRUCT_BODY();
 
 	UPROPERTY()
-		float Height;
+	float Height;
 
 	UPROPERTY()
-		float GradientX;
+	float GradientX;
 
 	UPROPERTY()
-		float GradientY;
+	float GradientY;
 };
 
 UENUM(BlueprintType)
@@ -35,47 +35,47 @@ struct FHydroErosionParams
 	GENERATED_USTRUCT_BODY();
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
-		int32 Iterations;
+	int32 Iterations;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
-		int32 Seed;
+	int32 Seed;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
-		int32 ErosionRadius;
+	int32 ErosionRadius;
 
 	// At zero, water will instantly change direction to flow downhill. At 1, water will never change direction. 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
-		float Inertia;
+	float Inertia;
 
 	// Multiplier for how much sediment a droplet can carry
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
-		float SedimentCapacityFactor;
+	float SedimentCapacityFactor;
 
 	// Used to prevent carry capacity getting too close to zero on flatter terrain
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
-		float MinSedimentCapacity;
+	float MinSedimentCapacity;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
-		float ErodeSpeed;
+	float ErodeSpeed;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
-		float DepositSpeed;
+	float DepositSpeed;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
-		float EvaporateSpeed;
+	float EvaporateSpeed;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
-		float Gravity;
+	float Gravity;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
-		int32 MaxDropletLifetime;
+	int32 MaxDropletLifetime;
 
 	//Debug param: If true it will override output with 1.f and 0.f for deposit/erode
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
-		bool bPreviewDropletErosionPaths;
+	bool bPreviewDropletErosionPaths;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = ErosionParams)
-		bool bPreviewDropletDepositionPaths;
+	bool bPreviewDropletDepositionPaths;
 
 	FHydroErosionParams()
 	{
@@ -100,16 +100,32 @@ struct FHydroErosionParams
  * A BP Library of functions for applying deformations and erosions to heightmaps
  */
 UCLASS(meta = (ScriptName = "GeneratedMeshDeformersLibrary"))
-class UHeightmapDeformersLibrary : public UBlueprintFunctionLibrary
+class RUNTIMEGEOMETRYUTILS_API UHeightmapDeformersLibrary : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
 public:
 
+	//(Not really useful atm) PRNG via hashing. Seed will be modified each call
 	UFUNCTION(BlueprintCallable) static
-	void PerlinDeformMap(UPARAM(ref) TArray<float>& InOutHeightmap, float Magnitude = 1, float Frequency = 1, FVector FrequencyShift = FVector(0, 0, 0), int32 RandomSeed = 31337);
+	int64 SplitMix64(int64& Seed);
+
+	UFUNCTION(BlueprintCallable) static
+	void PerlinDeformMap(UPARAM(ref) TArray<float>& InOutHeightmap, 
+		float Magnitude = 1, 
+		float Frequency = 1,
+		FVector FrequencyShift = FVector(0, 0, 0), 
+		int32 RandomSeed = 31337,
+		int32 Octaves = 1,
+		float OctaveFactor = 2.f);
 
 	UFUNCTION(BlueprintCallable) static
 	TArray<float> SquareFloatMapSized(int32 OneSideLength);
+
+	UFUNCTION(BlueprintCallable) static
+	UTexture2D* SquareTextureSized(int32 OneSideLength, EPixelFormat Format = PF_B8G8R8A8);
+
+	UFUNCTION(BlueprintCallable) static
+	void CopyFloatArrayToTexture(const TArray<float>& SrcData, UTexture2D* TargetTexture);
 
 	/**
 	* Erode a heightmap texture with hydraulic erosion via HydraulicErosionOnHeightMap. Convenience wrapper for texture conversion
@@ -124,9 +140,18 @@ public:
 	UFUNCTION(BlueprintCallable) static
 	UTexture2D* GenerateTransientCopy(UTexture2D* InTexture);
 
-	UFUNCTION(BlueprintCallable) static
-	void AppendAndRescale(UPARAM(ref) TArray<float>& InOutArray, const TArray<float>& Other, bool bNormalize = true, EFloatAppendTypes AppendType = EFloatAppendTypes::Add);
+	// Not a super fan of the two below API-wise
+	// consider unstable.
 
+	// Used for e.g. append arrays
+	UFUNCTION(BlueprintCallable) static
+	void VectorOpArray(UPARAM(ref) TArray<float>& InOutArray, const TArray<float>& Other, EFloatAppendTypes AppendType = EFloatAppendTypes::Add, bool bNormalize = true);
+
+	// Used for e.g. scaling arrays
+	UFUNCTION(BlueprintCallable) static
+	void ScalarOpArray(UPARAM(ref) TArray<float>& InOutArray, float Scale, EFloatAppendTypes AppendType = EFloatAppendTypes::Add);
+
+	//We also need a sub-array append/scale with curve for blending
 
 	//copies from https://github.com/getnamo/tensorflow-ue4/blob/master/Source/TensorFlow/Private/TensorFlowBlueprintLibrary.cpp
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToGrayScaleFloatArray (Texture2D)", BlueprintAutocast), Category = "Utilities|TensorFlow")

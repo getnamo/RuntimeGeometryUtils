@@ -27,28 +27,52 @@ float UHeightmapDeformersLibrary::HeightAtPixel(float X, float Y, void* TextureP
 	//Temp: get closest, TODO: interpolate from 4 nearest points
 }
 
-void UHeightmapDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& Map, float Magnitude /*= 1*/, float Frequency /*= 1*/, FVector FrequencyShift /*= FVector(0, 0, 0)*/, int32 RandomSeed /*= 31337*/)
+//From: https://github.com/svaarala/duktape/blob/master/misc/splitmix64.c
+int64 UHeightmapDeformersLibrary::SplitMix64(int64& Seed)
 {
-	FVector NoisePos;
-	NoisePos.Z = 0;
+	uint64_t x = Seed;
+	uint64_t z = (x += UINT64_C(0x9E3779B97F4A7C15));
+	z = (z ^ (z >> 30)) * UINT64_C(0xBF58476D1CE4E5B9);
+	z = (z ^ (z >> 27)) * UINT64_C(0x94D049BB133111EB);
+	Seed = x;
+	return z ^ (z >> 31);
+}
+
+void UHeightmapDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& Map,
+	float Magnitude /*= 1*/,
+	float Frequency /*= 1*/, 
+	FVector FrequencyShift /*= FVector(0, 0, 0)*/, 
+	int32 RandomSeed /*= 31337*/, 
+	int32 Octaves /*= 1*/,
+	float OctaveFactor /*= 2.f*/)
+{
+	FVector2D NoisePos;
 
 	int32 MapSize = (int32)FMath::Sqrt(Map.Num());
 
 	//Set X/Y from loop over square texture
+	float OctaveFrequency = Frequency;
+	float OctaveMagnitude = Magnitude;
 
-	for (int32 Y = 0; Y < MapSize; Y++)
+	for (int32 i = 0; i < Octaves; i++)
 	{
-		for (int32 X = 0; X < MapSize; X++)
+		for (float Y = 0.f; Y < MapSize; Y++)
 		{
-			int32 Index = (Y * MapSize) + X;
+			for (float X = 0.f; X < MapSize; X++)
+			{
+				int32 Index = (Y * MapSize) + X;
 
-			NoisePos.X = (float)X;
-			NoisePos.Y = (float)Y;
-			//float Displacement = Magnitude * FMath::PerlinNoise3D(Frequency * NoisePos);
-			float Displacement = Magnitude * (FMath::PerlinNoise2D(FVector2D(X, Y) * Frequency) + 1) / 2;
+				NoisePos.X = X + FrequencyShift.X;
+				NoisePos.Y = Y + FrequencyShift.Y;
+				float Displacement = OctaveMagnitude * (FMath::PerlinNoise2D(NoisePos * OctaveFrequency) + 1) / 2;
 
-			Map[Index] += Displacement;
+				Map[Index] += Displacement;
+			}
 		}
+
+		//Apply octave shift
+		OctaveFrequency = OctaveFrequency * OctaveFactor;
+		OctaveMagnitude = OctaveMagnitude / OctaveFactor;
 	}
 }
 
@@ -59,6 +83,35 @@ TArray<float> UHeightmapDeformersLibrary::SquareFloatMapSized(int32 OneSideLengt
 	Map.SetNumZeroed(OneSideLength * OneSideLength);
 
 	return Map;
+}
+
+
+UTexture2D* UHeightmapDeformersLibrary::SquareTextureSized(int32 OneSideLength, EPixelFormat Format)
+{
+	UTexture2D* Pointer = UTexture2D::CreateTransient(OneSideLength, OneSideLength, Format);
+	Pointer->UpdateResource();
+	return Pointer;
+}
+
+
+void UHeightmapDeformersLibrary::CopyFloatArrayToTexture(const TArray<float>& SrcData, UTexture2D* TargetTexture)
+{
+	uint8* MipData = static_cast<uint8*>(TargetTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE));
+
+	//Copy Data
+	for (int i = 0; i < SrcData.Num(); i++)
+	{
+		int MipPointer = i * 4;
+		int GreyValue = FMath::Clamp(SrcData[i], 0.f, 1.f) * 255.f;
+		MipData[MipPointer] = GreyValue;
+		MipData[MipPointer + 1] = GreyValue;
+		MipData[MipPointer + 2] = GreyValue;
+		MipData[MipPointer + 3] = 255;	//Alpha
+	}
+
+	//Unlock and Return data
+	TargetTexture->PlatformData->Mips[0].BulkData.Unlock();
+	TargetTexture->UpdateResource();
 }
 
 void InitializeBrushIndices(int MapSize, int Radius, TArray<TArray<int32>>& ErosionBrushIndices, TArray<TArray<float>>& ErosionBrushWeights) {
@@ -183,6 +236,11 @@ UTexture2D* UHeightmapDeformersLibrary::HydraulicErosionOnHeightTexture(UTexture
 
 void UHeightmapDeformersLibrary::HydraulicErosionOnHeightMap(UPARAM(ref) TArray<float>& Map, const FHydroErosionParams& Params)
 {
+	if (Map.Num() == 0) 
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UHeightmapDeformersLibrary::HydraulicErosionOnHeightMap Empty map array passed."));
+		return;
+	}
 	float InitialWaterVolume = 1;
 	float InitialSpeed = 1;
 
@@ -326,7 +384,7 @@ UTexture2D* UHeightmapDeformersLibrary::GenerateTransientCopy(UTexture2D* InText
 }
 
 
-void UHeightmapDeformersLibrary::AppendAndRescale(UPARAM(ref) TArray<float>& InOutArray, const TArray<float>& Other, bool bNormalize /*= true*/, EFloatAppendTypes AppendType /*= EFloatAppendTypes::Add*/)
+void UHeightmapDeformersLibrary::VectorOpArray(UPARAM(ref) TArray<float>& InOutArray, const TArray<float>& Other, EFloatAppendTypes AppendType /*= EFloatAppendTypes::Add*/, bool bNormalize /*= true*/)
 {
 	if (InOutArray.Num() != Other.Num())
 	{
@@ -381,13 +439,38 @@ void UHeightmapDeformersLibrary::AppendAndRescale(UPARAM(ref) TArray<float>& InO
 	}
 }
 
+
+void UHeightmapDeformersLibrary::ScalarOpArray(UPARAM(ref) TArray<float>& InOutArray, float Scale, EFloatAppendTypes AppendType /*= EFloatAppendTypes::Add*/)
+{
+	for (int32 i = 0; i < InOutArray.Num(); i++)
+	{
+		if (AppendType == EFloatAppendTypes::Add)
+		{
+			InOutArray[i] += Scale;
+		}
+		else if (AppendType == EFloatAppendTypes::Subtract)
+		{
+			InOutArray[i] -= Scale;
+		}
+		else if (AppendType == EFloatAppendTypes::Multiply)
+		{
+			InOutArray[i] *= Scale;
+		}
+		else if (AppendType == EFloatAppendTypes::Divide)
+		{
+			InOutArray[i] /= Scale;
+		}
+	}
+}
+
 TArray<float> UHeightmapDeformersLibrary::Conv_GreyScaleTexture2DToFloatArray(UTexture2D* InTexture)
 {
 	TArray<float> FloatArray;
 
 	//sanity check for types we support atm
 	if (InTexture->PlatformData->PixelFormat != PF_B8G8R8A8 &&
-		InTexture->PlatformData->PixelFormat != PF_R8G8B8A8)
+		InTexture->PlatformData->PixelFormat != PF_R8G8B8A8 && 
+		InTexture->PlatformData->PixelFormat != PF_FloatRGBA)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Invalid float array conversion not yet supported for requested pixel format."));
 		return FloatArray;
@@ -396,13 +479,54 @@ TArray<float> UHeightmapDeformersLibrary::Conv_GreyScaleTexture2DToFloatArray(UT
 	FloatArray.SetNum(InTexture->GetSizeX() * InTexture->GetSizeY());
 
 	// Lock the texture so it can be read
-	uint8* MipData = static_cast<uint8*>(InTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
-
-	for (int i = 0; i < FloatArray.Num(); i++)
+	if (InTexture->PlatformData->PixelFormat == PF_FloatRGBA)
 	{
-		int MipPointer = i * 4;
-		float GreyscaleValue = (MipData[MipPointer] + MipData[MipPointer + 1] + MipData[MipPointer + 2]) / 3.f;
-		FloatArray[i] = GreyscaleValue / 255.f;	 //normalize it
+		//Ensure settings for floaty rgba
+		//InTexture->CompressionSettings = TextureCompressionSettings::TC_VectorDisplacementmap;
+		InTexture->MipGenSettings = TextureMipGenSettings::TMGS_NoMipmaps;
+		InTexture->SRGB = false;
+		InTexture->UpdateResource();
+		uint8* MipData = static_cast<uint8*>(InTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
+
+		struct Float16Pixel
+		{
+			uint16_t r;
+			uint16_t g;
+			uint16_t b;
+			uint16_t a;
+		};
+
+		struct FloatPixel
+		{
+			float r;
+			float g;
+			float b;
+			float a;
+		};
+
+		for (int i = 0; i < FloatArray.Num(); i++)
+		{
+			int MipPointer = i * 8;
+			
+			Float16Pixel GreyscaleValue;
+			memcpy(&GreyscaleValue, &MipData[MipPointer], sizeof(GreyscaleValue));
+
+			//FloatArray[i] = (float)GreyscaleValue.r;
+
+			FloatArray[i] = (float)GreyscaleValue.r / 65536.f;
+			
+			/// 65536.f;// / 255.f;	 //normalize it
+		}
+	}
+	else
+	{
+		uint8* MipData = static_cast<uint8*>(InTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
+		for (int32 i = 0; i < FloatArray.Num(); i++)
+		{
+			int32 MipPointer = i * 4;
+			float GreyscaleValue = (MipData[MipPointer] + MipData[MipPointer + 1] + MipData[MipPointer + 2]) / 3.f;
+			FloatArray[i] = GreyscaleValue / 255.f;	 //normalize it
+		}
 	}
 
 	// Unlock the texture
@@ -431,22 +555,8 @@ UTexture2D* UHeightmapDeformersLibrary::Conv_GrayScaleFloatArrayToTexture2D(cons
 		Size = InSize;
 	}
 
-	UTexture2D* Pointer = UTexture2D::CreateTransient(Size.X, Size.Y, PF_B8G8R8A8);
-	uint8* MipData = static_cast<uint8*>(Pointer->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE));
+	UTexture2D* Pointer = SquareTextureSized(Size.X);
+	CopyFloatArrayToTexture(InFloatArray, Pointer);
 
-	//Copy Data
-	for (int i = 0; i < InFloatArray.Num(); i++)
-	{
-		int MipPointer = i * 4;
-		int GreyValue = FMath::Clamp(InFloatArray[i], 0.f, 1.f) * 255.f;
-		MipData[MipPointer] = GreyValue;
-		MipData[MipPointer + 1] = GreyValue;
-		MipData[MipPointer + 2] = GreyValue;
-		MipData[MipPointer + 3] = 255;	//Alpha
-	}
-
-	//Unlock and Return data
-	Pointer->PlatformData->Mips[0].BulkData.Unlock();
-	Pointer->UpdateResource();
 	return Pointer;
 }
