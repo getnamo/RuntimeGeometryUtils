@@ -116,7 +116,8 @@ public:
 		FVector FrequencyShift = FVector(0, 0, 0), 
 		int32 RandomSeed = 31337,
 		int32 Octaves = 1,
-		float OctaveFactor = 2.f);
+		float OctaveFactor = 2.f, 
+		bool bRidged = false);
 
 	UFUNCTION(BlueprintCallable) static
 	TArray<float> SquareFloatMapSized(int32 OneSideLength);

@@ -44,7 +44,8 @@ void UHeightmapDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& Map,
 	FVector FrequencyShift /*= FVector(0, 0, 0)*/, 
 	int32 RandomSeed /*= 31337*/, 
 	int32 Octaves /*= 1*/,
-	float OctaveFactor /*= 2.f*/)
+	float OctaveFactor /*= 2.f*/,
+	bool bRidged /*=false*/)
 {
 	FVector2D NoisePos;
 
@@ -53,6 +54,7 @@ void UHeightmapDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& Map,
 	//Set X/Y from loop over square texture
 	float OctaveFrequency = Frequency;
 	float OctaveMagnitude = Magnitude;
+	float Displacement = 0.f;
 
 	for (int32 i = 0; i < Octaves; i++)
 	{
@@ -64,7 +66,16 @@ void UHeightmapDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& Map,
 
 				NoisePos.X = X + FrequencyShift.X;
 				NoisePos.Y = Y + FrequencyShift.Y;
-				float Displacement = OctaveMagnitude * (FMath::PerlinNoise2D(NoisePos * OctaveFrequency) + 1) / 2;
+				
+
+				if (bRidged)
+				{
+					Displacement = OctaveMagnitude / 2.f * (1.f-FMath::Abs(FMath::PerlinNoise2D(NoisePos * OctaveFrequency)));
+				}
+				else
+				{
+					Displacement = OctaveMagnitude * (FMath::PerlinNoise2D(NoisePos * OctaveFrequency) + 1.f) / 2.f;
+				}
 
 				Map[Index] += Displacement;
 			}
@@ -75,7 +86,6 @@ void UHeightmapDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& Map,
 		OctaveMagnitude = OctaveMagnitude / OctaveFactor;
 	}
 }
-
 
 TArray<float> UHeightmapDeformersLibrary::SquareFloatMapSized(int32 OneSideLength)
 {
