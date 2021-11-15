@@ -161,13 +161,27 @@ public:
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToTexture2D (Grayscale Array)", BlueprintAutocast), Category = "Utilities|TensorFlow")
 	static UTexture2D* Conv_GrayScaleFloatArrayToTexture2D(const TArray<float>& InFloatArray, const FVector2D Size = FVector2D(0, 0));
 
+	//UFUNCTION()
+
+
 public:
 	//C++ only
 	/* Calculate gradient from map */
 	static FHeightAndGradient CalculateHeightAndGradient(TArray<float>& Nodes, int32 MapSize, float PosX, float PosY);
 
+	//Deform function signature: return value, terrain pix, mask pix
+	static void DeformTerrainByMask(TArray<float>& InOutTerrain, const TArray<float>& Mask, FTransform MaskTransform, TFunction<float(float, float)> DeformAction);
+
 	/**
 	* Read from texture pointer and get height
 	*/
 	static float HeightAtPixel(float X, float Y, void* TexturePointer, int32 TextureHeight, int32 TextureWidth, int32 BytesPerPixel = 4);
+
+	//Array needs to be square, Transform is relative to num squared unless scaled past 1.f
+	static float HeightInSquareArray(const FTransform& SamplingTransform, TArray<float>& Array);
+
+	static void HydraulicErosionOnHeightMapWithInterrupt(TArray<float>& InOutHeightmap, const FHydroErosionParams& Params, TFunction<bool()>InterruptHandler = nullptr);
+
+protected:
+	static void InitializeBrushIndices(int MapSize, int Radius, TArray<TArray<int32>>& ErosionBrushIndices, TArray<TArray<float>>& ErosionBrushWeights);
 };
