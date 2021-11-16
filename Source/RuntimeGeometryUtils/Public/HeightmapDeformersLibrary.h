@@ -161,6 +161,9 @@ public:
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToTexture2D (Grayscale Array)", BlueprintAutocast), Category = "Utilities|TensorFlow")
 	static UTexture2D* Conv_GrayScaleFloatArrayToTexture2D(const TArray<float>& InFloatArray, const FVector2D Size = FVector2D(0, 0));
 
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "ToHeightTexture2D (Grayscale Array)", BlueprintAutocast), Category = "Utilities|TensorFlow")
+	static UTexture2D* Conv_GrayScaleFloatArrayToHeightTexture2D(const TArray<float>& InFloatArray, const FVector2D Size = FVector2D(0, 0));
+
 	//UFUNCTION()
 
 

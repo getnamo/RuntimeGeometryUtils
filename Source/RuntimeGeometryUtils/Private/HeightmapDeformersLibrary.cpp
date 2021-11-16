@@ -35,7 +35,7 @@ float UHeightmapDeformersLibrary::HeightInSquareArray(const FTransform& Sampling
 
 	//TODO modify X/Y by transform rotation and scale
 
-	int32 MapSize = (int32)FMath::Sqrt(Array.Num());
+	int32 MapSize = (int32)FMath::Sqrt((float)Array.Num());
 
 	bool bValidSample = XRounded < MapSize && YRounded < MapSize;
 
@@ -69,7 +69,7 @@ void UHeightmapDeformersLibrary::HydraulicErosionOnHeightMapWithInterrupt(TArray
 	//this should always be a square texture
 
 	//todo: detect non-square texture by lack of square result
-	int32 MapSize = (int32)FMath::Sqrt(Map.Num());
+	int32 MapSize = (int32)FMath::Sqrt((float)Map.Num());
 
 	//Todo: re-use this if possible
 	InitializeBrushIndices(MapSize, Params.ErosionRadius, ErosionBrushIndices, ErosionBrushWeights);
@@ -215,7 +215,7 @@ void UHeightmapDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& Map,
 {
 	FVector2D NoisePos;
 
-	int32 MapSize = (int32)FMath::Sqrt(Map.Num());
+	int32 MapSize = (int32)FMath::Sqrt((float)Map.Num());
 
 	//Set X/Y from loop over square texture
 	float OctaveFrequency = Frequency;
@@ -265,6 +265,10 @@ TArray<float> UHeightmapDeformersLibrary::SquareFloatMapSized(int32 OneSideLengt
 UTexture2D* UHeightmapDeformersLibrary::SquareTextureSized(int32 OneSideLength, EPixelFormat Format)
 {
 	UTexture2D* Pointer = UTexture2D::CreateTransient(OneSideLength, OneSideLength, Format);
+	if (Format == EPixelFormat::PF_FloatRGBA)
+	{
+		Pointer->SRGB = false;
+	}
 	Pointer->UpdateResource();
 	return Pointer;
 }
@@ -274,15 +278,43 @@ void UHeightmapDeformersLibrary::CopyFloatArrayToTexture(const TArray<float>& Sr
 {
 	uint8* MipData = static_cast<uint8*>(TargetTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE));
 
-	//Copy Data
-	for (int i = 0; i < SrcData.Num(); i++)
+	if (TargetTexture->GetPixelFormat() == EPixelFormat::PF_B8G8R8A8)
 	{
-		int MipPointer = i * 4;
-		int GreyValue = FMath::Clamp(SrcData[i], 0.f, 1.f) * 255.f;
-		MipData[MipPointer] = GreyValue;
-		MipData[MipPointer + 1] = GreyValue;
-		MipData[MipPointer + 2] = GreyValue;
-		MipData[MipPointer + 3] = 255;	//Alpha
+		//Copy Data
+		for (int i = 0; i < SrcData.Num(); i++)
+		{
+			int MipPointer = i * 4;
+			int GreyValue = FMath::Clamp(SrcData[i], 0.f, 1.f) * 255.f;
+			MipData[MipPointer] = GreyValue;
+			MipData[MipPointer + 1] = GreyValue;
+			MipData[MipPointer + 2] = GreyValue;
+			MipData[MipPointer + 3] = 255;	//Alpha
+		}
+	}
+	else if (TargetTexture->GetPixelFormat() == EPixelFormat::PF_G16)
+	{
+		for (int i = 0; i < SrcData.Num(); i++)
+		{
+			int32 MipPointer = i * 2;
+			uint16 GreyValue = FMath::RoundToInt(FMath::Clamp(SrcData[i], 0.f, 1.f) * 65536.f);
+
+			FMemory::Memcpy(&MipData[MipPointer], &GreyValue, sizeof(uint16));
+		}
+	}
+	else if (TargetTexture->GetPixelFormat() == EPixelFormat::PF_FloatRGBA)
+	{
+		for (int i = 0; i < SrcData.Num(); i++)
+		{
+			int32 MipPointer = i * 8;
+			FFloat16Color Color;
+			
+			Color.R = FMath::Clamp(SrcData[i], 0.f, 1.f);
+			Color.G = Color.R;
+			Color.B = Color.R;
+			Color.A = 1.f;
+
+			FMemory::Memcpy(&MipData[MipPointer], &Color, sizeof(FFloat16Color));
+		}
 	}
 
 	//Unlock and Return data
@@ -608,9 +640,36 @@ UTexture2D* UHeightmapDeformersLibrary::Conv_GrayScaleFloatArrayToTexture2D(cons
 	return Pointer;
 }
 
+
+UTexture2D* UHeightmapDeformersLibrary::Conv_GrayScaleFloatArrayToHeightTexture2D(const TArray<float>& InFloatArray, const FVector2D InSize /*= FVector2D(0, 0)*/)
+{
+	FVector2D Size;
+
+	//Create square image and lock for writing
+	if (InSize == FVector2D(0, 0))
+	{
+		int32 Length = FMath::Pow(InFloatArray.Num(), 0.5);
+		if (Length * Length != InFloatArray.Num())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Invalid float array without specified size, needs to be square."));
+			return nullptr;
+		}
+		Size = FVector2D(Length, Length);
+	}
+	else
+	{
+		Size = InSize;
+	}
+
+	UTexture2D* Pointer = SquareTextureSized(Size.X, EPixelFormat::PF_G16);
+	CopyFloatArrayToTexture(InFloatArray, Pointer);
+
+	return Pointer;
+}
+
 void UHeightmapDeformersLibrary::DeformTerrainByMask(TArray<float>& InOutTerrain, const TArray<float>& Mask, FTransform MaskTransform, TFunction<float(float, float)> DeformAction)
 {
-	int32 MapSize = (int32)FMath::Sqrt(InOutTerrain.Num());
+	int32 MapSize = (int32)FMath::Sqrt((float)InOutTerrain.Num());
 
 	//TODO: transform mask for indexed/lerped reading
 
