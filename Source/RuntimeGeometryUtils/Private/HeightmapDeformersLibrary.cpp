@@ -567,32 +567,16 @@ TArray<float> UHeightmapDeformersLibrary::Conv_GreyScaleTexture2DToFloatArray(UT
 		InTexture->UpdateResource();
 		uint8* MipData = static_cast<uint8*>(InTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
 
-		struct Float16Pixel
-		{
-			uint16_t r;
-			uint16_t g;
-			uint16_t b;
-			uint16_t a;
-		};
-
-		struct FloatPixel
-		{
-			float r;
-			float g;
-			float b;
-			float a;
-		};
-
 		for (int i = 0; i < FloatArray.Num(); i++)
 		{
 			int MipPointer = i * 8;
 			
-			Float16Pixel GreyscaleValue;
-			memcpy(&GreyscaleValue, &MipData[MipPointer], sizeof(GreyscaleValue));
+			FFloat16Color GreyscaleValue;
+			memcpy(&GreyscaleValue, &MipData[MipPointer], sizeof(FFloat16Color));
 
 			//FloatArray[i] = (float)GreyscaleValue.r;
 
-			FloatArray[i] = (float)GreyscaleValue.r / 65536.f;
+			FloatArray[i] = (float)GreyscaleValue.R;// / 65536.f;
 			
 			/// 65536.f;// / 255.f;	 //normalize it
 		}
@@ -686,9 +670,12 @@ void UHeightmapDeformersLibrary::DeformTerrainByMask(TArray<float>& InOutTerrain
 			//TODO: sample mask, if within mask, apply masking action (e.g. multiply by 0.f)
 			//should be a function pass in
 			float MaskValue = 0.f;
-			float Displacement = DeformAction(InOutTerrain[Index], MaskValue);
 
-			InOutTerrain[Index] += Displacement;
+			//super temp, mask as if direct
+			MaskValue = Mask[Index];
+
+			//Deform action returns actual value, instead of explicit add
+			InOutTerrain[Index] = DeformAction(InOutTerrain[Index], MaskValue);
 		}
 	}
 }
