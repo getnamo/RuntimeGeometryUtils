@@ -173,7 +173,9 @@ public:
 	static FHeightAndGradient CalculateHeightAndGradient(TArray<float>& Nodes, int32 MapSize, float PosX, float PosY);
 
 	//Deform function signature: return value, terrain pix, mask pix
-	static void DeformTerrainByMask(TArray<float>& InOutTerrain, const TArray<float>& Mask, FTransform MaskTransform, TFunction<float(float, float)> DeformAction);
+	static void DeformTerrainByMask(TArray<float>& InOutTerrain, const TArray<float>& Mask, 
+		FTransform TerrainTransform, FTransform MaskTransform,
+		TFunction<float(float, float)> DeformAction);
 
 	/**
 	* Read from texture pointer and get height

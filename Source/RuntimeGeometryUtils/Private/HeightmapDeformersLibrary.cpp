@@ -651,31 +651,53 @@ UTexture2D* UHeightmapDeformersLibrary::Conv_GrayScaleFloatArrayToHeightTexture2
 	return Pointer;
 }
 
-void UHeightmapDeformersLibrary::DeformTerrainByMask(TArray<float>& InOutTerrain, const TArray<float>& Mask, FTransform MaskTransform, TFunction<float(float, float)> DeformAction)
+void UHeightmapDeformersLibrary::DeformTerrainByMask(TArray<float>& Patch, const TArray<float>& Mask, FTransform PatchTransform, FTransform MaskTransform, TFunction<float(float, float)> DeformAction)
 {
-	int32 MapSize = (int32)FMath::Sqrt((float)InOutTerrain.Num());
+	//Assumption is square images only
+	int32 PatchSize = (int32)FMath::Sqrt((float)Patch.Num());
+	int32 MaskSize = (int32)FMath::Sqrt((float)Mask.Num());
 
-	//TODO: transform mask for indexed/lerped reading
+	//Figure out scale by taking terrain scale vs mask scale. We assume they work in the same units
+	//FVector DeltaScale = MaskTransform.GetScale3D() / TerrainTransform.GetScale3D();
+	//FVector DeltaOrigin = (MaskTransform.GetLocation() * MaskTransform.GetScale3D()) - (PatchTransform.GetLocation()* PatchTransform.GetScale3D());
 
-	for (float Y = 0.f; Y < MapSize; Y++)
+	FVector DeltaOrigin = PatchTransform.GetLocation() - MaskTransform.GetLocation();
+	FVector DeltaScale = PatchTransform.GetScale3D() / MaskTransform.GetScale3D();
+
+	for (float Y = 0.f; Y < PatchSize; Y++)
 	{
-		for (float X = 0.f; X < MapSize; X++)
+		for (float X = 0.f; X < PatchSize; X++)
 		{
-			int32 Index = (Y * MapSize) + X;
+			//Terrain index, read normally
+			int32 PatchIndex = (PatchSize * Y) + X;
 
-			//Scale is interpretted in Cm. e.g. 100 = 1m full length mask, 200,000 = 2km, 4,000,000 = 40km
+			if (PatchIndex >= Patch.Num())
+			{
+				UE_LOG(LogTemp, Log, TEXT("%d is out of bounds for Patch %d"), PatchIndex, Patch.Num())
+				continue;
+			}
 
-			//todo: scaled and rotated access of square array
+			//MaskIndex, scale read, check validity
+			//int32 MaskIndex = Index;
+			//float XSample = DeltaOrigin.X + (X * DeltaScale.X);
+			//int32 MaskIndex = ( ( (Y + DeltaOrigin.Y) * float(MaskSize) ) * (DeltaScale.Y /*some fraction of x scale?*/)) + XSample;
 
-			//TODO: sample mask, if within mask, apply masking action (e.g. multiply by 0.f)
-			//should be a function pass in
-			float MaskValue = 0.f;
 
-			//super temp, mask as if direct
-			MaskValue = Mask[Index];
+			float XSample = X * DeltaScale.X;
+			float YSample = FMath::RoundToInt(Y * DeltaScale.Y) * MaskSize;
+			int32 MaskIndex = YSample + XSample;//XSample;
+
+			//This is expected to happen often, we skip these samples
+			//Todo: allow unbounded/looped masking
+			if (MaskIndex < 0 || Mask.Num() <= MaskIndex || XSample > MaskSize)
+			{
+				//UE_LOG(LogTemp, Log, TEXT("%d is out of bounds for Mask %d"), MaskIndex, Mask.Num())
+				continue;
+			}
 
 			//Deform action returns actual value, instead of explicit add
-			InOutTerrain[Index] = DeformAction(InOutTerrain[Index], MaskValue);
+			//TODO: sanity check indices before acting
+			Patch[PatchIndex] = DeformAction(Patch[PatchIndex], Mask[MaskIndex]);
 		}
 	}
 }
