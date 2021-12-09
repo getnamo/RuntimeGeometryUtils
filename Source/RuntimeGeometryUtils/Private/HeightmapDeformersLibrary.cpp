@@ -228,7 +228,7 @@ void UHeightmapDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& Map,
 		{
 			for (float X = 0.f; X < MapSize; X++)
 			{
-				int32 Index = (Y * MapSize) + X;
+				int32 Index = FMath::RoundToInt((Y * MapSize) + X);
 
 				NoisePos.X = X + FrequencyShift.X;
 				NoisePos.Y = Y + FrequencyShift.Y;
@@ -243,7 +243,14 @@ void UHeightmapDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& Map,
 					Displacement = OctaveMagnitude * (FMath::PerlinNoise2D(NoisePos * OctaveFrequency) + 1.f) / 2.f;
 				}
 
-				Map[Index] += Displacement;
+				if (Index < Map.Num())
+				{
+					Map[Index] += Displacement;
+				}
+				else
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Invalid index: %d/%d"), Index, Map.Num());
+				}
 			}
 		}
 
@@ -504,6 +511,10 @@ void UHeightmapDeformersLibrary::VectorOpArray(UPARAM(ref) TArray<float>& InOutA
 		{
 			InOutArray[i] /= Other[i];
 		}
+		else if (AppendType == EFloatAppendTypes::Override)
+		{
+			InOutArray[i] = Other[i];
+		}
 	}
 
 	//loop 2, normalize result
@@ -651,7 +662,7 @@ UTexture2D* UHeightmapDeformersLibrary::Conv_GrayScaleFloatArrayToHeightTexture2
 	return Pointer;
 }
 
-void UHeightmapDeformersLibrary::DeformTerrainByMask(TArray<float>& Patch, const TArray<float>& Mask, FTransform PatchTransform, FTransform MaskTransform, TFunction<float(float, float)> DeformAction)
+void UHeightmapDeformersLibrary::DeformTerrainByMask(TArray<float>& Patch, const TArray<float>& Mask, FTransform PatchTransform, FTransform MaskTransform, TFunction<float(float, float, float)> DeformAction, float Scale)
 {
 	//Assumption is square images only
 	int32 PatchSize = (int32)FMath::Sqrt((float)Patch.Num());
@@ -678,26 +689,82 @@ void UHeightmapDeformersLibrary::DeformTerrainByMask(TArray<float>& Patch, const
 			}
 
 			//MaskIndex, scale read, check validity
-			//int32 MaskIndex = Index;
-			//float XSample = DeltaOrigin.X + (X * DeltaScale.X);
-			//int32 MaskIndex = ( ( (Y + DeltaOrigin.Y) * float(MaskSize) ) * (DeltaScale.Y /*some fraction of x scale?*/)) + XSample;
-
-
-			float XSample = X * DeltaScale.X;
-			float YSample = FMath::RoundToInt(Y * DeltaScale.Y) * MaskSize;
-			int32 MaskIndex = YSample + XSample;//XSample;
+			float XSample = (X + DeltaOrigin.X) * DeltaScale.X;
+			float YSample = FMath::RoundToInt((Y + DeltaOrigin.Y) * DeltaScale.Y) * MaskSize; //FMath::RoundToInt
+			int32 MaskIndex = YSample + XSample;
 
 			//This is expected to happen often, we skip these samples
 			//Todo: allow unbounded/looped masking
-			if (MaskIndex < 0 || Mask.Num() <= MaskIndex || XSample > MaskSize)
+			if (MaskIndex < 0 || Mask.Num() <= MaskIndex || XSample >= MaskSize || YSample < 0 || XSample < 0)
 			{
 				//UE_LOG(LogTemp, Log, TEXT("%d is out of bounds for Mask %d"), MaskIndex, Mask.Num())
 				continue;
 			}
 
-			//Deform action returns actual value, instead of explicit add
-			//TODO: sanity check indices before acting
-			Patch[PatchIndex] = DeformAction(Patch[PatchIndex], Mask[MaskIndex]);
+			//Deform action returns actual desired value to give full control to deformer
+			Patch[PatchIndex] = DeformAction(Patch[PatchIndex], Mask[MaskIndex], Scale);
 		}
 	}
+}
+
+void UHeightmapDeformersLibrary::DeformTerrainByMaskOp(TArray<float>& InOutTerrain, const TArray<float>& Mask, FTransform TerrainTransform, FTransform MaskTransform, EFloatAppendTypes MaskOp, float Scale /*= 1.f*/)
+{
+	//no op default
+	TFunction<float(float, float, float)> MaskOpFunction = [](float TerrainPixel, float MaskPixel, float MaskScale) 
+	{ 
+		return TerrainPixel; 
+	}; 
+	
+	if (MaskOp == EFloatAppendTypes::Add)
+	{
+		MaskOpFunction = [](float TerrainPixel, float MaskPixel, float MaskScale)
+		{
+			return TerrainPixel + (MaskPixel * MaskScale);
+		};
+	}
+	else if (MaskOp == EFloatAppendTypes::Subtract)
+	{
+		MaskOpFunction = [](float TerrainPixel, float MaskPixel, float MaskScale)
+		{
+			return TerrainPixel - (MaskPixel * MaskScale);
+		};
+	}
+	else if (MaskOp == EFloatAppendTypes::Multiply)
+	{
+		MaskOpFunction = [](float TerrainPixel, float MaskPixel, float MaskScale)
+		{
+			return TerrainPixel * (MaskPixel * MaskScale);
+		};
+	}
+	else if (MaskOp == EFloatAppendTypes::Divide)
+	{
+		MaskOpFunction = [](float TerrainPixel, float MaskPixel, float MaskScale)
+		{
+			if (MaskPixel > 0.001f)	//avoid /0 problem
+			{
+				return TerrainPixel / (MaskPixel * MaskScale);
+			}
+			else
+			{
+				TerrainPixel;
+			}
+		};
+	}
+	else if (MaskOp == EFloatAppendTypes::Override)
+	{
+		MaskOpFunction = [](float TerrainPixel, float MaskPixel, float MaskScale)
+		{
+			//If non-zero, override in mask area
+			if (MaskPixel > 0.01f)
+			{
+				return MaskPixel * MaskScale;
+			}
+			else
+			{
+				return TerrainPixel;
+			}
+		};
+	}
+
+	DeformTerrainByMask(InOutTerrain, Mask, TerrainTransform, MaskTransform, MaskOpFunction, Scale);
 }

@@ -26,7 +26,8 @@ enum class EFloatAppendTypes : uint8
 	Add,
 	Subtract,
 	Multiply,
-	Divide
+	Divide,
+	Override
 };
 
 USTRUCT(BlueprintType)
@@ -173,9 +174,12 @@ public:
 	static FHeightAndGradient CalculateHeightAndGradient(TArray<float>& Nodes, int32 MapSize, float PosX, float PosY);
 
 	//Deform function signature: return value, terrain pix, mask pix
-	static void DeformTerrainByMask(TArray<float>& InOutTerrain, const TArray<float>& Mask, 
+	static void DeformTerrainByMask(TArray<float>& InOutTerrain, const TArray<float>& Mask,
 		FTransform TerrainTransform, FTransform MaskTransform,
-		TFunction<float(float, float)> DeformAction);
+		TFunction<float(float, float, float)> DeformAction, float Scale = 1.f);
+
+	static void DeformTerrainByMaskOp(TArray<float>& InOutTerrain, const TArray<float>& Mask,
+		FTransform TerrainTransform, FTransform MaskTransform, EFloatAppendTypes MaskOp, float Scale = 1.f);
 
 	/**
 	* Read from texture pointer and get height
