@@ -746,7 +746,7 @@ void UHeightmapDeformersLibrary::DeformTerrainByMaskOp(TArray<float>& InOutTerra
 			}
 			else
 			{
-				TerrainPixel;
+				return TerrainPixel;
 			}
 		};
 	}
