@@ -260,6 +260,60 @@ void UHeightmapDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& Map,
 	}
 }
 
+
+void UHeightmapDeformersLibrary::PerlinDeformMeshAlongCenter(
+	UPARAM(ref) TArray<FVector>& InOutVertices,
+	FVector Center,
+	float Magnitude /*= 1*/,
+	float Frequency /*= 1*/,
+	FVector FrequencyShift /*= FVector(0, 0, 0)*/,
+	int32 RandomSeed /*= 31337*/,
+	int32 Octaves /*= 1*/,
+	float OctaveFactor /*= 2.f*/,
+	bool bRidged /*= false*/)
+{
+	FVector NoisePos;
+
+	//Set X/Y from loop over square texture
+	float OctaveFrequency = Frequency;
+	float OctaveMagnitude = Magnitude;
+	float Displacement = 0.f;
+
+	//obtain average center for normal
+	/*FVector Center = FVector(0.f);
+	for (FVector& Vertex : InOutVertices)
+	{
+		Center += Vertex;
+	}
+	Center = Center / InOutVertices.Num();*/
+
+	//shift every vertex by displacement
+	for (int32 i = 0; i < Octaves; i++)
+	{
+		for (FVector& Vertex : InOutVertices)
+		{
+			NoisePos = Vertex + FrequencyShift;
+
+			if (bRidged)
+			{
+				Displacement = OctaveMagnitude / 2.f * (1.f - FMath::Abs(FMath::PerlinNoise3D(NoisePos * OctaveFrequency)));
+			}
+			else
+			{
+				Displacement = OctaveMagnitude * (FMath::PerlinNoise3D(NoisePos * OctaveFrequency) + 1.f) / 2.f;
+			}
+
+			FVector Normal = (Vertex - Center).GetSafeNormal();
+
+			Vertex = Vertex + (Displacement * Normal);	//should be along normal...
+		}
+
+		//Apply octave shift
+		OctaveFrequency = OctaveFrequency * OctaveFactor;
+		OctaveMagnitude = OctaveMagnitude / OctaveFactor;
+	}
+}
+
 TArray<float> UHeightmapDeformersLibrary::SquareFloatMapSized(int32 OneSideLength)
 {
 	TArray<float>Map;

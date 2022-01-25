@@ -121,6 +121,17 @@ public:
 		bool bRidged = false);
 
 	UFUNCTION(BlueprintCallable) static
+	void PerlinDeformMeshAlongCenter(UPARAM(ref) TArray<FVector>& InOutVertices,
+		FVector Center,
+		float Magnitude = 1,
+		float Frequency = 1,
+		FVector FrequencyShift = FVector(0, 0, 0),
+		int32 RandomSeed = 31337,
+		int32 Octaves = 1,
+		float OctaveFactor = 2.f,
+		bool bRidged = false);
+
+	UFUNCTION(BlueprintCallable) static
 	TArray<float> SquareFloatMapSized(int32 OneSideLength);
 
 	UFUNCTION(BlueprintCallable) static
