@@ -300,7 +300,7 @@ void UHeightmapDeformersLibrary::PerlinDeformMeshAlongCenter(
 			}
 			else
 			{
-				Displacement = OctaveMagnitude * (FMath::PerlinNoise3D(NoisePos * OctaveFrequency) + 1.f) / 2.f;
+				Displacement = OctaveMagnitude * (FMath::PerlinNoise3D(NoisePos * OctaveFrequency));// +1.f) / 2.f; //use if we want additive
 			}
 
 			FVector Normal = (Vertex - Center).GetSafeNormal();
