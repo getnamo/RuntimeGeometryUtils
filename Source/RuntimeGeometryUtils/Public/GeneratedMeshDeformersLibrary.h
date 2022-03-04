@@ -3,7 +3,6 @@
 #include "GeneratedMesh.h"
 #include "GeneratedMeshDeformersLibrary.generated.h"
 
-
 /**
  * A BP Library of functions for applying deformations to the vertices of a UGeneratedMesh
  */
@@ -45,19 +44,19 @@ public:
 	 * Displace the mesh vertices along their vertex normal directions using 3D Perlin Noise
 	 */
 	UFUNCTION(BlueprintCallable) static UPARAM(DisplayName = "Input Mesh")
-	UGeneratedMesh* DeformMeshPerlinNoiseNormal(UGeneratedMesh* Mesh, float Magnitude = 1, float Frequency = 1, FVector FrequencyShift = FVector(0,0,0), int RandomSeed = 31337);
+	UGeneratedMesh* DeformMeshPerlinNoiseNormal(UGeneratedMesh* Mesh, float Magnitude = 1, float Frequency = 1, FVector FrequencyShift = FVector(0,0,0), int32 RandomSeed = 31337);
 
 	/**
 	 * Displace the mesh vertices along their vertex normal directions using 3D Perlin Noise, but only in narrow range of normal
 	 */
 	UFUNCTION(BlueprintCallable) static UPARAM(DisplayName = "Input Mesh")
-	UGeneratedMesh* DeformMeshPerlinAlongAxisNormal(UGeneratedMesh* Mesh, float Magnitude = 1, float Frequency = 1, FVector FrequencyShift = FVector(0, 0, 0), int RandomSeed = 31337, FVector DirectionNormal = FVector(0, 0, 1));
+	UGeneratedMesh* DeformMeshPerlinAlongAxisNormal(UGeneratedMesh* Mesh, float Magnitude = 1, float Frequency = 1, FVector FrequencyShift = FVector(0, 0, 0), int32 RandomSeed = 31337, FVector DirectionNormal = FVector(0, 0, 1));
 
 	/**
 	 * Displace the mesh vertices along their vertex normal directions using 3D Perlin Noise, but only above the given Z height (TODO: support any height cutoff vector)
 	 */
 	UFUNCTION(BlueprintCallable) static UPARAM(DisplayName = "Input Mesh")
-	UGeneratedMesh* DeformMeshPerlinNormalPastHeight(UGeneratedMesh* Mesh, float Magnitude = 1, float Frequency = 1, FVector FrequencyShift = FVector(0, 0, 0), int RandomSeed = 31337, FVector HeightVector = FVector(0, 0, 1));
+	UGeneratedMesh* DeformMeshPerlinNormalPastHeight(UGeneratedMesh* Mesh, float Magnitude = 1, float Frequency = 1, FVector FrequencyShift = FVector(0, 0, 0), int32 RandomSeed = 31337, FVector HeightVector = FVector(0, 0, 1));
 
 	/**
 	 * Apply N iterations of explicit uniform Laplacian mesh smoothing to the vertex positions, with the given Alpha in range [0,1]. Clamps to max 100 iterations.
@@ -67,8 +66,5 @@ public:
 
 
 protected:
-	/** 
-	* Read from texture pointer and get height
-	*/
-	static float HeightAtPixel(float X, float Y, void* TexturePointer, int32 TextureHeight, int32 TextureWidth, int32 BytesPerPixel = 4);
+
 };

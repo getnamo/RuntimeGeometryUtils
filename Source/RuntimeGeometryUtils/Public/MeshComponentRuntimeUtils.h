@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Engine/StaticMesh.h"
 #include "ProceduralMeshComponent.h"
-#include "DynamicMesh3.h"
+#include "DynamicMesh/DynamicMesh3.h"
 
 
 namespace RTGUtils

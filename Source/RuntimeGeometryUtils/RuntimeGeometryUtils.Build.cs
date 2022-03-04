@@ -26,7 +26,8 @@ public class RuntimeGeometryUtils : ModuleRules
 			new string[]
 			{
 				"Core",
-				"GeometricObjects",
+				"GeometryCore",
+				"GeometryFramework",
 				"DynamicMesh",
 				"ProceduralMeshComponent"
 			}

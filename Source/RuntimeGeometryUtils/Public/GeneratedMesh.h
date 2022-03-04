@@ -1,12 +1,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "DynamicMesh3.h"
-#include "DynamicMeshAABBTree3.h"
+#include "DynamicMesh/DynamicMesh3.h"
+#include "DynamicMesh/DynamicMeshAABBTree3.h"
 #include "Spatial/FastWinding.h"
 #include "GeneratedMesh.generated.h"
 
 class ADynamicMeshBaseActor;
+
+using namespace UE::Geometry;
 
 
 UENUM(BlueprintType)
@@ -284,7 +286,7 @@ public:
 
 
 protected:
-	FTransform3d AppendTransform;
+	FTransform3d ToAppendTransform;
 	TUniquePtr<FDynamicMesh3> Mesh;
 
 	TUniquePtr<FDynamicMeshAABBTree3> MeshAABBTree;

@@ -1,8 +1,8 @@
 #include "GeneratedMesh.h"
 #include "DynamicMeshBaseActor.h"
 
-#include "MeshTransforms.h"
-#include "MeshNormals.h"
+#include "DynamicMesh/MeshTransforms.h"
+#include "DynamicMesh/MeshNormals.h"
 #include "MeshQueries.h"
 
 #include "Generators/SphereGenerator.h"
@@ -127,20 +127,20 @@ UGeneratedMesh* UGeneratedMesh::MakeDuplicate(UGeneratedMesh* MeshObj)
 
 UGeneratedMesh* UGeneratedMesh::SetAppendTransform(FTransform TransformIn)
 {
-	AppendTransform = FTransform3d(TransformIn);
+	ToAppendTransform = FTransform3d(TransformIn);
 	return this;
 }
 
 UGeneratedMesh* UGeneratedMesh::ClearAppendTransform()
 {
-	AppendTransform = FTransform3d::Identity();
+	ToAppendTransform = FTransform3d::Identity;
 	return this;
 }
 
 
 void UGeneratedMesh::AppendMeshWithAppendTransform(FDynamicMesh3&& ToAppend, bool bPostMeshUpdate)
 {
-	MeshTransforms::ApplyTransform(ToAppend, AppendTransform);
+	MeshTransforms::ApplyTransform(ToAppend, ToAppendTransform);
 
 	FMeshIndexMappings Mappings;
 	FDynamicMeshEditor Editor(Mesh.Get());
@@ -245,7 +245,7 @@ UGeneratedMesh* UGeneratedMesh::AppendRevolvePolygon(TArray<FVector2D> Polygon, 
 	FPolygon2d PathPoly = FPolygon2d::MakeCircle(Radius, RevolveSteps);
 	for (FVector2d v : PathPoly.GetVertices())
 	{
-		RevolveGen.Path.Add(v);
+		RevolveGen.Path.Add(FVector(v.X,v.Y,0));
 	}
 	RevolveGen.bLoop = true;
 	RevolveGen.bCapped = false;
@@ -312,8 +312,8 @@ UGeneratedMesh* UGeneratedMesh::BooleanWith(UGeneratedMesh* OtherMesh, EGenerate
 
 	FDynamicMesh3 ResultMesh;
 	FMeshBoolean::EBooleanOp ApplyOp = (FMeshBoolean::EBooleanOp)(int)Operation;
-	FMeshBoolean Boolean( Mesh.Get(), FTransform3d::Identity(),
-						  OtherMesh->Mesh.Get(), FTransform3d::Identity(),
+	FMeshBoolean Boolean( Mesh.Get(), FTransform3d::Identity,
+						  OtherMesh->Mesh.Get(), FTransform3d::Identity,
 						  &ResultMesh, ApplyOp);
 	Boolean.bPutResultInInputSpace = true;
 	bool bOK = Boolean.Compute();
@@ -337,9 +337,7 @@ UGeneratedMesh* UGeneratedMesh::BooleanWithTransformed(UGeneratedMesh* OtherMesh
 	FDynamicMesh3 ResultMesh;
 
 	FMeshBoolean::EBooleanOp ApplyOp = (FMeshBoolean::EBooleanOp)(int)Operation;
-	FMeshBoolean Boolean(Mesh.Get(), FTransform3d::Identity(),
-		OtherMesh->Mesh.Get(), FTransform3d(TransformIn),
-		&ResultMesh, ApplyOp);
+	FMeshBoolean Boolean(Mesh.Get(), FTransform3d::Identity, OtherMesh->Mesh.Get(), FTransform3d(TransformIn), &ResultMesh, ApplyOp);
 	Boolean.bPutResultInInputSpace = true;
 	bool bOK = Boolean.Compute();
 	if (!bOK)
@@ -360,7 +358,7 @@ UGeneratedMesh* UGeneratedMesh::CutWithPlane(FVector Origin, FVector Normal, boo
 		Normal = -Normal;
 	}
 
-	FMeshPlaneCut Cut(Mesh.Get(), FVector3d(Origin), FVector3d(Normal).Normalized());
+	FMeshPlaneCut Cut(Mesh.Get(), Origin, Normal.GetSafeNormal());
 	//Cut.UVScaleFactor = UVScaleFactor;
 	Cut.Cut();
 
@@ -515,7 +513,7 @@ bool UGeneratedMesh::IntersectRay(FVector RayOrigin, FVector RayDirection,
 	FVector& HitPoint, float& HitDistance, int& NearestTriangle, FVector& TriBaryCoords,
 	float MaxDistance)
 {
-	FRay3d LocalRay(FVector3d(RayOrigin), FVector3d(RayDirection).Normalized());
+	FRay3d LocalRay(RayOrigin, RayDirection.GetSafeNormal());
 	IMeshSpatial::FQueryOptions QueryOptions;
 	if (MaxDistance > 0)
 	{
