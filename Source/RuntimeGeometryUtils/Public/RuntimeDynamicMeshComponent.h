@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include "SimpleDynamicMeshComponent.h"
-#include "DynamicMeshAABBTree3.h"
+#include "DynamicMesh/DynamicMeshAABBTree3.h"
+#include "Components/DynamicMeshComponent.h"
 #include "Interfaces/Interface_CollisionDataProvider.h"
 #include "ShapeApproximation/SimpleShapeSet3.h"
 #include "RuntimeDynamicMeshComponent.generated.h"
@@ -14,7 +14,7 @@
  * 
  */
 UCLASS(ShowCategories=(Physics, Collision))
-class RUNTIMEGEOMETRYUTILS_API URuntimeDynamicMeshComponent : public USimpleDynamicMeshComponent, public IInterface_CollisionDataProvider
+class RUNTIMEGEOMETRYUTILS_API URuntimeDynamicMeshComponent : public UDynamicMeshComponent
 {
 	GENERATED_BODY()
 
@@ -46,8 +46,6 @@ public:
 	virtual UBodySetup* GetBodySetup() override;
 
 protected:
-	UPROPERTY(/*Instanced*/)    // what is Instanced for?
-	class UBodySetup* MeshBodySetup;
 
 	//UPROPERTY(EditAnywhere, Category = "Runtime Dynamic Mesh")
 	//bool bUseAsyncCooking = true;		// todo: support

@@ -262,7 +262,7 @@ void UHeightmapDeformersLibrary::PerlinDeformMap(UPARAM(ref) TArray<float>& Map,
 
 
 void UHeightmapDeformersLibrary::PerlinDeformMeshAlongCenter(
-	UPARAM(ref) TArray<FVector>& InOutVertices,
+	UPARAM(ref) TArray<FVector3f>& InOutVertices,
 	FVector Center,
 	float Magnitude /*= 1*/,
 	float Frequency /*= 1*/,
@@ -290,7 +290,7 @@ void UHeightmapDeformersLibrary::PerlinDeformMeshAlongCenter(
 	//shift every vertex by displacement
 	for (int32 i = 0; i < Octaves; i++)
 	{
-		for (FVector& Vertex : InOutVertices)
+		for (FVector3f& Vertex : InOutVertices)
 		{
 			NoisePos = Vertex + FrequencyShift;
 
@@ -337,7 +337,7 @@ UTexture2D* UHeightmapDeformersLibrary::SquareTextureSized(int32 OneSideLength, 
 
 void UHeightmapDeformersLibrary::CopyFloatArrayToTexture(const TArray<float>& SrcData, UTexture2D* TargetTexture)
 {
-	uint8* MipData = static_cast<uint8*>(TargetTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE));
+	uint8* MipData = static_cast<uint8*>(TargetTexture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE));
 
 	if (TargetTexture->GetPixelFormat() == EPixelFormat::PF_B8G8R8A8)
 	{
@@ -379,7 +379,7 @@ void UHeightmapDeformersLibrary::CopyFloatArrayToTexture(const TArray<float>& Sr
 	}
 
 	//Unlock and Return data
-	TargetTexture->PlatformData->Mips[0].BulkData.Unlock();
+	TargetTexture->GetPlatformData()->Mips[0].BulkData.Unlock();
 	TargetTexture->UpdateResource();
 }
 
@@ -477,8 +477,8 @@ UTexture2D* UHeightmapDeformersLibrary::HydraulicErosionOnHeightTexture(UTexture
 		return nullptr;
 	}
 
-	int32 SizeX = InTexture->PlatformData->Mips[0].SizeX;
-	int32 SizeY = InTexture->PlatformData->Mips[0].SizeY;
+	int32 SizeX = InTexture->GetPlatformData()->Mips[0].SizeX;
+	int32 SizeY = InTexture->GetPlatformData()->Mips[0].SizeY;
 
 	if (SizeX != SizeY)
 	{
@@ -516,8 +516,8 @@ UTexture2D* UHeightmapDeformersLibrary::GenerateTransientCopy(UTexture2D* InText
 		return nullptr;
 	}
 	UTexture2D* TexturePointer = UTexture2D::CreateTransient(
-		InTexture->PlatformData->Mips[0].SizeX,
-		InTexture->PlatformData->Mips[0].SizeY,
+		InTexture->GetPlatformData()->Mips[0].SizeX,
+		InTexture->GetPlatformData()->Mips[0].SizeY,
 		InTexture->GetPixelFormat());
 	TexturePointer->UpdateResource();
 	return TexturePointer;
@@ -612,9 +612,9 @@ TArray<float> UHeightmapDeformersLibrary::Conv_GreyScaleTexture2DToFloatArray(UT
 	TArray<float> FloatArray;
 
 	//sanity check for types we support atm
-	if (InTexture->PlatformData->PixelFormat != PF_B8G8R8A8 &&
-		InTexture->PlatformData->PixelFormat != PF_R8G8B8A8 && 
-		InTexture->PlatformData->PixelFormat != PF_FloatRGBA)
+	if (InTexture->GetPlatformData()->PixelFormat != PF_B8G8R8A8 &&
+		InTexture->GetPlatformData()->PixelFormat != PF_R8G8B8A8 &&
+		InTexture->GetPlatformData()->PixelFormat != PF_FloatRGBA)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Invalid float array conversion not yet supported for requested pixel format."));
 		return FloatArray;
@@ -623,14 +623,14 @@ TArray<float> UHeightmapDeformersLibrary::Conv_GreyScaleTexture2DToFloatArray(UT
 	FloatArray.SetNum(InTexture->GetSizeX() * InTexture->GetSizeY());
 
 	// Lock the texture so it can be read
-	if (InTexture->PlatformData->PixelFormat == PF_FloatRGBA)
+	if (InTexture->GetPlatformData()->PixelFormat == PF_FloatRGBA)
 	{
 		//Ensure settings for floaty rgba
 		//InTexture->CompressionSettings = TextureCompressionSettings::TC_VectorDisplacementmap;
 		InTexture->MipGenSettings = TextureMipGenSettings::TMGS_NoMipmaps;
 		InTexture->SRGB = false;
 		InTexture->UpdateResource();
-		uint8* MipData = static_cast<uint8*>(InTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
+		uint8* MipData = static_cast<uint8*>(InTexture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
 
 		for (int i = 0; i < FloatArray.Num(); i++)
 		{
@@ -648,7 +648,7 @@ TArray<float> UHeightmapDeformersLibrary::Conv_GreyScaleTexture2DToFloatArray(UT
 	}
 	else
 	{
-		uint8* MipData = static_cast<uint8*>(InTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
+		uint8* MipData = static_cast<uint8*>(InTexture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
 		for (int32 i = 0; i < FloatArray.Num(); i++)
 		{
 			int32 MipPointer = i * 4;
@@ -658,7 +658,7 @@ TArray<float> UHeightmapDeformersLibrary::Conv_GreyScaleTexture2DToFloatArray(UT
 	}
 
 	// Unlock the texture
-	InTexture->PlatformData->Mips[0].BulkData.Unlock();
+	InTexture->GetPlatformData()->Mips[0].BulkData.Unlock();
 
 	return FloatArray;
 }

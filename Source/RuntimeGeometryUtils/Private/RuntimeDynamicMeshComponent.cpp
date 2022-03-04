@@ -12,7 +12,7 @@ URuntimeDynamicMeshComponent::URuntimeDynamicMeshComponent()
 
 void URuntimeDynamicMeshComponent::NotifyMeshUpdated()
 {
-	USimpleDynamicMeshComponent::NotifyMeshUpdated();
+	UDynamicMeshComponent::NotifyMeshUpdated();
 
 	RegenerateCollision_Immediate();
 }

@@ -1,5 +1,5 @@
 #include "DynamicMeshOBJReader.h"
-#include "DynamicMeshAttributeSet.h"
+#include "DynamicMesh/DynamicMeshAttributeSet.h"
 #include "tinyobj/tiny_obj_loader.h"
 
 

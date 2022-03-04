@@ -1,8 +1,8 @@
 
 #include "GeneratedMeshDeformersLibrary.h"
-#include "DynamicMesh3.h"
+#include "DynamicMesh/DynamicMesh3.h"
 #include "FrameTypes.h"
-#include "MeshNormals.h"
+#include "DynamicMesh/MeshNormals.h"
 #include "Async/ParallelFor.h"
 #include "HeightmapDeformersLibrary.h"
 
@@ -79,11 +79,11 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshHeightmap(UGeneratedMe
 		BytesPerPixel = 1;
 	}
 
-	const int32 TextureWidth = HeightmapTexture->PlatformData->Mips[0].SizeX;
-	const int32 TextureHeight= HeightmapTexture->PlatformData->Mips[0].SizeY;
+	const int32 TextureWidth = HeightmapTexture->GetPlatformData()->Mips[0].SizeX;
+	const int32 TextureHeight= HeightmapTexture->GetPlatformData()->Mips[0].SizeY;
 	const int32 DataLength = TextureHeight * TextureWidth * BytesPerPixel;
 
-	void* TextureDataPointer = HeightmapTexture->PlatformData->Mips[0].BulkData.Lock(LOCK_READ_ONLY);
+	void* TextureDataPointer = HeightmapTexture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_ONLY);
 
 	if (MeshObj)
 	{
@@ -126,7 +126,7 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshHeightmap(UGeneratedMe
 	}
 
 	//re-lock heightmap
-	HeightmapTexture->PlatformData->Mips[0].BulkData.Unlock();
+	HeightmapTexture->GetPlatformData()->Mips[0].BulkData.Unlock();
 
 	return MeshObj;
 }
@@ -291,7 +291,7 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::SmoothMeshUniform(UGeneratedMesh
 					{
 						FVector3d Centroid;
 						Mesh.GetVtxOneRingCentroid(vid, Centroid);
-						SmoothPositions[vid] = FVector3d::Lerp(Mesh.GetVertex(vid), Centroid, Alpha);
+						SmoothPositions[vid] = FMath::Lerp<FVector3d>(Mesh.GetVertex(vid), Centroid, (double)Alpha);
 					}
 				});
 				for (int32 vid = 0; vid < NumV; ++vid)

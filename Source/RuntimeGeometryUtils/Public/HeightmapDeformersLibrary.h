@@ -121,7 +121,7 @@ public:
 		bool bRidged = false);
 
 	UFUNCTION(BlueprintCallable) static
-	void PerlinDeformMeshAlongCenter(UPARAM(ref) TArray<FVector>& InOutVertices,
+	void PerlinDeformMeshAlongCenter(UPARAM(ref) TArray<FVector3f>& InOutVertices,
 		FVector Center,
 		float Magnitude = 1,
 		float Frequency = 1,

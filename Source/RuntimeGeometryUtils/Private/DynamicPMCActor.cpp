@@ -1,6 +1,6 @@
 #include "DynamicPMCActor.h"
 #include "MeshComponentRuntimeUtils.h"
-#include "DynamicMesh3.h"
+#include "DynamicMesh/DynamicMesh3.h"
 #include "Operations/MeshConvexHull.h"
 
 
