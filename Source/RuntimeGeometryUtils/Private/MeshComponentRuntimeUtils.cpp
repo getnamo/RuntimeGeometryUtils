@@ -96,11 +96,13 @@ RUNTIMEGEOMETRYUTILS_API void RTGUtils::UpdateDynamicMeshFromStaticMesh(UStaticM
 					int32 NewIndex = MeshToSectionVertMap.Find(MeshVertIndex);
 					if (NewIndex == INDEX_NONE)
 					{
-						OutMesh.AppendVertex(VertexBuffers.PositionVertexBuffer.VertexPosition(MeshVertIndex));
+						UE::Geometry::FVertexInfo Vertex;
+						Vertex.Position = FVector(VertexBuffers.PositionVertexBuffer.VertexPosition(MeshVertIndex));
+						OutMesh.AppendVertex(Vertex);
 						MeshToSectionVertMap.Add(MeshVertIndex);
 					}
 
-					Normals->AppendElement(FVector(VertexBuffers.StaticMeshVertexBuffer.VertexTangentZ(MeshVertIndex)));
+					Normals->AppendElement(FVector3f(VertexBuffers.StaticMeshVertexBuffer.VertexTangentZ(MeshVertIndex)));
 					UVs->AppendElement(VertexBuffers.StaticMeshVertexBuffer.GetVertexUV(MeshVertIndex, 0));
 
 					Triangles.Add(MeshVertIndex);

@@ -290,8 +290,9 @@ void UHeightmapDeformersLibrary::PerlinDeformMeshAlongCenter(
 	//shift every vertex by displacement
 	for (int32 i = 0; i < Octaves; i++)
 	{
-		for (FVector3f& Vertex : InOutVertices)
+		for (FVector3f& VertexF : InOutVertices)
 		{
+			FVector Vertex = FVector(VertexF);
 			NoisePos = Vertex + FrequencyShift;
 
 			if (bRidged)
