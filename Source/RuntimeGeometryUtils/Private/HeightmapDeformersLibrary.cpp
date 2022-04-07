@@ -290,9 +290,9 @@ void UHeightmapDeformersLibrary::PerlinDeformMeshAlongCenter(
 	//shift every vertex by displacement
 	for (int32 i = 0; i < Octaves; i++)
 	{
-		for (FVector3f& VertexF : InOutVertices)
+		for (FVector3f& VertexFloatRef : InOutVertices)
 		{
-			FVector Vertex = FVector(VertexF);
+			FVector Vertex = FVector(VertexFloatRef);
 			NoisePos = Vertex + FrequencyShift;
 
 			if (bRidged)
@@ -306,7 +306,7 @@ void UHeightmapDeformersLibrary::PerlinDeformMeshAlongCenter(
 
 			FVector Normal = (Vertex - Center).GetSafeNormal();
 
-			Vertex = Vertex + (Displacement * Normal);	//should be along normal...
+			VertexFloatRef = FVector3f(Vertex + (Displacement * Normal));	//should be along normal...
 		}
 
 		//Apply octave shift
