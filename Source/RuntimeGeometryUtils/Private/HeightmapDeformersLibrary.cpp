@@ -628,7 +628,14 @@ TArray<float> UHeightmapDeformersLibrary::Conv_GreyScaleTexture2DToFloatArray(UT
 	{
 		//Ensure settings for floaty rgba
 		//InTexture->CompressionSettings = TextureCompressionSettings::TC_VectorDisplacementmap;
+
+//NOTE: temp disable for packaged build
+#if WITH_EDITOR
 		InTexture->MipGenSettings = TextureMipGenSettings::TMGS_NoMipmaps;
+#else
+		UE_LOG(LogTemp, Warning, TEXT("Conv_GreyScaleTexture2DToFloatArray:: Attempted set MipGenSettings in non-editor context. Future note: Fix methods to support this."));
+#endif
+		
 		InTexture->SRGB = false;
 		InTexture->UpdateResource();
 		uint8* MipData = static_cast<uint8*>(InTexture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_ONLY));
