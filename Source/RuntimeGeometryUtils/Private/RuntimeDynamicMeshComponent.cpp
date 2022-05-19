@@ -12,7 +12,7 @@ URuntimeDynamicMeshComponent::URuntimeDynamicMeshComponent()
 
 void URuntimeDynamicMeshComponent::NotifyMeshUpdated()
 {
-	USimpleDynamicMeshComponent::NotifyMeshUpdated();
+	UDynamicMeshComponent::NotifyMeshUpdated();
 
 	RegenerateCollision_Immediate();
 }
@@ -110,7 +110,7 @@ bool URuntimeDynamicMeshComponent::GetPhysicsTriMeshData(struct FTriMeshCollisio
 	CollisionData->Vertices.Reserve(CurMesh->VertexCount());
 	for (int32 vid : CurMesh->VertexIndicesItr())
 	{
-		int32 Index = CollisionData->Vertices.Add((FVector)CurMesh->GetVertex(vid));
+		int32 Index = CollisionData->Vertices.Add(FVector3f(CurMesh->GetVertex(vid)));
 		if (bIsSparseV)
 		{
 			VertexMap[vid] = Index;

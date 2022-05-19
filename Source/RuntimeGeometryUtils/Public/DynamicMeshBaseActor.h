@@ -1,9 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "DynamicMesh/DynamicMesh3.h"
 #include "GameFramework/Actor.h"
-#include "DynamicMesh3.h"
-#include "DynamicMeshAABBTree3.h"
 #include "Spatial/FastWinding.h"
 #include "GeneratedMesh.h"
 #include "DynamicMeshBaseActor.generated.h"

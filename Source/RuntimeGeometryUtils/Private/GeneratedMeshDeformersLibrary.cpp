@@ -1,9 +1,10 @@
 
 #include "GeneratedMeshDeformersLibrary.h"
-#include "DynamicMesh3.h"
+#include "DynamicMesh/DynamicMesh3.h"
 #include "FrameTypes.h"
-#include "MeshNormals.h"
+#include "DynamicMesh/MeshNormals.h"
 #include "Async/ParallelFor.h"
+#include "HeightmapDeformersLibrary.h"
 
 
 UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshAxisSinWave1D(UGeneratedMesh* MeshObj, float Magnitude, float Frequency, float FrequencyShift, FVector AxisIn, FVector UpIn)
@@ -64,6 +65,72 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshMove(UGeneratedMesh* M
 	return MeshObj;
 }
 
+UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshHeightmap(UGeneratedMesh* MeshObj, UTexture2D* HeightmapTexture, float ZScale/*= 1*/, FVector DirectionNormal/*= FVector(0, 0, 1)*/)
+{
+	//Lock texture for read and get some metadata
+	int32 BytesPerPixel = 4;
+
+	EPixelFormat Format = HeightmapTexture->GetPixelFormat();
+	if (Format != PF_B8G8R8A8)
+	{
+		UE_LOG(LogTemp, Log, TEXT("NB: Pixel format is not PF_R8G8B8A8: %d"), Format);
+		//Todo: detect format and adjust BytesPerPixel
+
+		BytesPerPixel = 1;
+	}
+
+	const int32 TextureWidth = HeightmapTexture->GetPlatformData()->Mips[0].SizeX;
+	const int32 TextureHeight= HeightmapTexture->GetPlatformData()->Mips[0].SizeY;
+	const int32 DataLength = TextureHeight * TextureWidth * BytesPerPixel;
+
+	void* TextureDataPointer = HeightmapTexture->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_ONLY);
+
+	if (MeshObj)
+	{
+		MeshObj->EditMeshInPlace([&](FDynamicMesh3& Mesh)
+		{
+			//grab bounds for mapped sampling
+			//TODO: generalize to projection vector
+			FAxisAlignedBox3d Bounds = Mesh.GetBounds();
+			float MeshWidth = Bounds.Width();
+			float MeshHeight = Bounds.Height();
+			FVector3d Center = Bounds.Center();
+
+			//UE_LOG(LogTemp, Log, TEXT("MeshSize: %1.3f, %1.3f"), MeshWidth, MeshHeight);
+
+			//TODO: optimize loop
+			ParallelFor(Mesh.MaxVertexID(), [&](int32 vid)
+			{
+				if (Mesh.IsVertex(vid))
+				{
+					FVector3d Pos = Mesh.GetVertex(vid);
+
+					//Normalize sample
+					float XSample = (Pos.X + (MeshHeight / 2)) / MeshHeight * TextureHeight;
+					float YSample = (Pos.Y + (MeshWidth / 2)) / MeshWidth * TextureWidth;
+
+					//UE_LOG(LogTemp, Log, TEXT("Sample: %1.3f, %1.3f"), XSample, YSample);
+
+					float UnscaledZ = UHeightmapDeformersLibrary::HeightAtPixel(XSample, YSample, TextureDataPointer, TextureHeight, TextureWidth, BytesPerPixel);
+
+					//TODO: support vector deform
+
+					//Apply new delta
+					FVector3d NewPos = Pos;
+					NewPos.Z = Pos.Z + UnscaledZ * ZScale;
+
+					Mesh.SetVertex(vid, NewPos);
+				}
+			});
+		});
+	}
+
+	//re-lock heightmap
+	HeightmapTexture->GetPlatformData()->Mips[0].BulkData.Unlock();
+
+	return MeshObj;
+}
+
 UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshAxisSinWaveRadial(UGeneratedMesh* MeshObj, float Magnitude, float Frequency, float FrequencyShift, FVector AxisIn)
 {
 	FVector3d Axis(AxisIn);
@@ -96,7 +163,7 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshAxisSinWaveRadial(UGen
 
 
 
-UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinNoiseNormal(UGeneratedMesh* MeshObj, float Magnitude, float Frequency, FVector FrequencyShift, int RandomSeed)
+UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinNoiseNormal(UGeneratedMesh* MeshObj, float Magnitude, float Frequency, FVector FrequencyShift, int32 RandomSeed)
 {
 	if (MeshObj)
 	{
@@ -130,6 +197,79 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinNoiseNormal(UGen
 
 
 
+UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinAlongAxisNormal(UGeneratedMesh* MeshObj, float Magnitude /*= 1*/, float Frequency /*= 1*/, FVector FrequencyShift /*= FVector(0, 0, 0)*/, int32 RandomSeed /*= 31337*/, FVector DirectionNormal /*= FVector(0, 0, 1)*/)
+{
+	if (MeshObj)
+	{
+		MeshObj->EditMeshInPlace([&](FDynamicMesh3& Mesh)
+			{
+				FMath::SRandInit(RandomSeed);
+				const float RandomOffset = 10000.0f * FMath::SRand();
+				FVector3d Offset(RandomOffset, RandomOffset, RandomOffset);
+				Offset += (FVector3d)FrequencyShift;
+
+				FMeshNormals Normals(&Mesh);
+				Normals.ComputeVertexNormals();
+
+				ParallelFor(Mesh.MaxVertexID(), [&](int32 vid)
+					{
+						if (Mesh.IsVertex(vid))
+						{
+							FVector3d Pos = Mesh.GetVertex(vid);
+							FVector NoisePos = (FVector)((double)Frequency * (Pos + Offset));
+							float Displacement = Magnitude * FMath::PerlinNoise3D(Frequency * NoisePos);
+							FVector VertexNormal = (FVector)Normals[vid];
+
+							if (acosf(VertexNormal | DirectionNormal) < (PI/4))
+							{
+								FVector3d NewPos = Pos + Displacement * VertexNormal;
+								Mesh.SetVertex(vid, NewPos);
+							}							
+						}
+					});
+			});
+	}
+
+	return MeshObj;
+}
+
+
+UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshPerlinNormalPastHeight(UGeneratedMesh* MeshObj, float Magnitude /*= 1*/, float Frequency /*= 1*/, FVector FrequencyShift /*= FVector(0, 0, 0)*/, int32 RandomSeed /*= 31337*/, FVector HeightVector /*= FVector(0, 0, 1)*/)
+{
+	if (MeshObj)
+	{
+		MeshObj->EditMeshInPlace([&](FDynamicMesh3& Mesh)
+			{
+				FMath::SRandInit(RandomSeed);
+				const float RandomOffset = 10000.0f * FMath::SRand();
+				FVector3d Offset(RandomOffset, RandomOffset, RandomOffset);
+				Offset += (FVector3d)FrequencyShift;
+
+				FMeshNormals Normals(&Mesh);
+				Normals.ComputeVertexNormals();
+
+				ParallelFor(Mesh.MaxVertexID(), [&](int32 vid)
+					{
+						if (Mesh.IsVertex(vid))
+						{
+							FVector3d Pos = Mesh.GetVertex(vid);
+							FVector NoisePos = (FVector)((double)Frequency * (Pos + Offset));
+							float Displacement = Magnitude * FMath::PerlinNoise3D(Frequency * NoisePos);
+							FVector VertexNormal = (FVector)Normals[vid];
+
+							if (Pos.Z >= HeightVector.Z)
+							{
+								FVector3d NewPos = Pos + Displacement * FVector(0,0,1);
+								Mesh.SetVertex(vid, NewPos);
+							}
+						}
+					});
+			});
+	}
+
+	return MeshObj;
+}
+
 UGeneratedMesh* UGeneratedMeshDeformersLibrary::SmoothMeshUniform(UGeneratedMesh* MeshObj, float Alpha, int32 Iterations)
 {
 	Alpha = FMathf::Clamp(Alpha, 0.0f, 1.0f);
@@ -151,7 +291,7 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::SmoothMeshUniform(UGeneratedMesh
 					{
 						FVector3d Centroid;
 						Mesh.GetVtxOneRingCentroid(vid, Centroid);
-						SmoothPositions[vid] = FVector3d::Lerp(Mesh.GetVertex(vid), Centroid, Alpha);
+						SmoothPositions[vid] = FMath::Lerp<FVector3d>(Mesh.GetVertex(vid), Centroid, (double)Alpha);
 					}
 				});
 				for (int32 vid = 0; vid < NumV; ++vid)
@@ -167,3 +307,4 @@ UGeneratedMesh* UGeneratedMeshDeformersLibrary::SmoothMeshUniform(UGeneratedMesh
 
 	return MeshObj;
 }
+

@@ -1,6 +1,6 @@
 #include "DynamicSDMCActor.h"
 #include "MeshComponentRuntimeUtils.h"
-#include "DynamicMesh3.h"
+#include "DynamicMesh/DynamicMesh3.h"
 #include "Operations/MeshConvexHull.h"
 #include "Materials/Material.h"
 

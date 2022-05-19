@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Engine/StaticMesh.h"
 #include "ProceduralMeshComponent.h"
-#include "DynamicMesh3.h"
+#include "DynamicMesh/DynamicMesh3.h"
 
 
 namespace RTGUtils
@@ -20,7 +20,8 @@ namespace RTGUtils
 
 	RUNTIMEGEOMETRYUTILS_API void UpdateDynamicMeshFromStaticMesh(
 		UStaticMesh* StaticMesh,
-		FDynamicMesh3& Mesh);
+		FDynamicMesh3& Mesh,
+		bool bUseMeshDescriptorsInEditor = false);
 
 
 

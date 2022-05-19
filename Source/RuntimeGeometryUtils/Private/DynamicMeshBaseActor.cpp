@@ -3,9 +3,9 @@
 #include "Generators/SphereGenerator.h"
 #include "Generators/GridBoxMeshGenerator.h"
 #include "MeshQueries.h"
-#include "DynamicMesh3.h"
-#include "MeshNormals.h"
-#include "MeshTransforms.h"
+#include "DynamicMesh/DynamicMesh3.h"
+#include "DynamicMesh/MeshNormals.h"
+#include "DynamicMesh/MeshTransforms.h"
 #include "MeshSimplification.h"
 #include "Operations/MeshBoolean.h"
 #include "Implicit/Solidify.h"
@@ -206,11 +206,12 @@ FVector ADynamicMeshBaseActor::GetTriNormal(int TriangleID, bool bWorldSpace) co
 {
 	if (SourceMesh.IsTriangle(TriangleID))
 	{
-		FVector3d Normal = SourceMesh.GetTriNormal(TriangleID);
+		FVector Normal = SourceMesh.GetTriNormal(TriangleID);
 		if (bWorldSpace)
 		{
 			FTransform3d ActorToWorld(GetActorTransform());
-			return (FVector)ActorToWorld.TransformNormal(Normal);
+			
+			return ActorToWorld.TransformVectorNoScale(Normal);
 		}
 		return (FVector)Normal;
 	}
@@ -274,8 +275,9 @@ bool ADynamicMeshBaseActor::IntersectRay(FVector RayOrigin, FVector RayDirection
 	{
 		FTransform3d ActorToWorld(GetActorTransform());
 		FVector3d WorldDirection(RayDirection); WorldDirection.Normalize();
-		FRay3d LocalRay(ActorToWorld.InverseTransformPosition((FVector3d)RayOrigin),
-			ActorToWorld.InverseTransformNormal(WorldDirection));
+		FRay3d LocalRay(ActorToWorld.InverseTransformPosition(RayOrigin),
+						ActorToWorld.InverseTransformVectorNoScale(WorldDirection) );
+
 		IMeshSpatial::FQueryOptions QueryOptions;
 		if (MaxDistance > 0)
 		{
@@ -344,8 +346,8 @@ void ADynamicMeshBaseActor::BooleanWithMesh(ADynamicMeshBaseActor* OtherMeshActo
 		}
 
 		FMeshBoolean Boolean(
-			&MeshToUpdate, FTransform3d::Identity(),
-			&OtherMesh, FTransform3d::Identity(),
+			&MeshToUpdate,
+			&OtherMesh,
 			&ResultMesh,
 			ApplyOp);
 		Boolean.bPutResultInInputSpace = true;
@@ -440,7 +442,7 @@ void ADynamicMeshBaseActor::CopyFromMesh(UGeneratedMesh* GeneratedMesh, bool bRe
 
 void ADynamicMeshBaseActor::SolidifyMesh(int VoxelResolution, float WindingThreshold)
 {
-	if (MeshAABBTree.IsValid() == false)
+	if (MeshAABBTree.IsValid(false) == false)
 	{
 		MeshAABBTree.Build();
 	}

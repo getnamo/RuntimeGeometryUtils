@@ -1,5 +1,5 @@
 #include "DynamicMeshOBJWriter.h"
-#include "DynamicMeshAttributeSet.h"
+#include "DynamicMesh/DynamicMeshAttributeSet.h"
 #include "DynamicMeshEditor.h"
 
 #include <fstream>
