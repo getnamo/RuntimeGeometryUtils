@@ -1,8 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "DynamicMesh/DynamicMesh3.h"
 #include "GameFramework/Actor.h"
+#include "DynamicMesh/DynamicMesh3.h"
+#include "DynamicMesh/DynamicMeshAABBTree3.h"
 #include "Spatial/FastWinding.h"
 #include "GeneratedMesh.h"
 #include "DynamicMeshBaseActor.generated.h"
@@ -109,6 +110,9 @@ enum class EDynamicMeshActorCollisionMode : uint8
 UCLASS(Abstract)
 class RUNTIMEGEOMETRYUTILS_API ADynamicMeshBaseActor : public AActor
 {
+	using FDynamicMesh3 = UE::Geometry::FDynamicMesh3;
+	using FDynamicMeshAABBTree3 = UE::Geometry::FDynamicMeshAABBTree3;
+
 	GENERATED_BODY()
 	
 public:	
@@ -248,7 +252,7 @@ protected:
 	// This AABBTree is updated each time SourceMesh is modified if bEnableSpatialQueries=true or bEnableInsideQueries=true
 	FDynamicMeshAABBTree3 MeshAABBTree;
 	// This FastWindingTree is updated each time SourceMesh is modified if bEnableInsideQueries=true
-	TUniquePtr<TFastWindingTree<FDynamicMesh3>> FastWinding;
+	TUniquePtr<UE::Geometry::TFastWindingTree<FDynamicMesh3>> FastWinding;
 
 
 	//

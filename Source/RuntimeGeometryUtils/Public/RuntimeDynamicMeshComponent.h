@@ -7,7 +7,6 @@
 #include "ShapeApproximation/SimpleShapeSet3.h"
 #include "RuntimeDynamicMeshComponent.generated.h"
 
-
 /**
  * URuntimeDynamicMeshComponent extends USimpleDynamicMeshComponent with Physics/Collision Support.
  * Complex-as-Simple and externally-generated Simple Collision are available.
@@ -25,8 +24,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Runtime Dynamic Mesh")
 	bool bUseComplexAsSimpleCollision = true;
 
-	void SetSimpleCollisionGeometry(const FSimpleShapeSet3d& SimpleShapes, bool bDeferCollisionUpdate = false);
-	void SetSimpleCollisionGeometry(FSimpleShapeSet3d&& SimpleShapes, bool bDeferCollisionUpdate = false);
+	void SetSimpleCollisionGeometry(const UE::Geometry::FSimpleShapeSet3d& SimpleShapes, bool bDeferCollisionUpdate = false);
+	void SetSimpleCollisionGeometry(UE::Geometry::FSimpleShapeSet3d&& SimpleShapes, bool bDeferCollisionUpdate = false);
 
 
 
@@ -53,6 +52,6 @@ protected:
 	void RegenerateCollision_Immediate();
 	//void RegenerateCollision_Async();   // todo: implement
 
-	FSimpleShapeSet3d SimpleCollisionShapes;
+	UE::Geometry::FSimpleShapeSet3d SimpleCollisionShapes;
 
 };
