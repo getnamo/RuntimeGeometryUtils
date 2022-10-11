@@ -4,7 +4,7 @@
 
 #include <fstream>
 
-
+using namespace UE::Geometry;
 
 class FDynamicMeshOBJWriter
 {

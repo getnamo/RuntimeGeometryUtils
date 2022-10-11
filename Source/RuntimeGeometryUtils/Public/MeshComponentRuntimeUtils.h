@@ -16,12 +16,7 @@ namespace RTGUtils
 	 */
 	RUNTIMEGEOMETRYUTILS_API void UpdateStaticMeshFromDynamicMesh(
 		UStaticMesh* StaticMesh,
-		const FDynamicMesh3* Mesh);
-
-	RUNTIMEGEOMETRYUTILS_API void UpdateDynamicMeshFromStaticMesh(
-		UStaticMesh* StaticMesh,
-		FDynamicMesh3& Mesh,
-		bool bUseMeshDescriptorsInEditor = false);
+		const UE::Geometry::FDynamicMesh3* Mesh);
 
 
 
@@ -33,7 +28,7 @@ namespace RTGUtils
 	 */
 	RUNTIMEGEOMETRYUTILS_API void UpdatePMCFromDynamicMesh_SplitTriangles(
 		UProceduralMeshComponent* Component, 
-		const FDynamicMesh3* Mesh,
+		const UE::Geometry::FDynamicMesh3* Mesh,
 		bool bUseFaceNormals,
 		bool bInitializeUV0,
 		bool bInitializePerVertexColors,

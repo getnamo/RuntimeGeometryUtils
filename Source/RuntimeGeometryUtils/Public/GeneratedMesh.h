@@ -8,8 +8,6 @@
 
 class ADynamicMeshBaseActor;
 
-using namespace UE::Geometry;
-
 
 UENUM(BlueprintType)
 enum class EGeneratedMeshBooleanOperation : uint8
@@ -29,6 +27,9 @@ enum class EGeneratedMeshBooleanOperation : uint8
 UCLASS(BlueprintType, Transient)
 class RUNTIMEGEOMETRYUTILS_API UGeneratedMesh : public UObject
 {
+	using FDynamicMesh3 = UE::Geometry::FDynamicMesh3;
+	using FDynamicMeshAABBTree3 = UE::Geometry::FDynamicMeshAABBTree3;
+
 	GENERATED_BODY()
 
 public:
@@ -54,12 +55,6 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "GeneratedMesh|Initialization")
 	bool ReadMeshFromFile(FString Path, bool bFlipOrientation);
-
-	/**
-	* Convert a static mesh to a UGeneratedMesh
-	*/
-	UFUNCTION(BlueprintCallable, Category = "GeneratedMesh|Initialization")
-	UGeneratedMesh* MeshFromStatic(UStaticMesh* InMesh);
 
 	/**
 	 * Set the Append Transform. This transform will be applied to any shapes created using the AppendX() functions (AppendBox, AppendSphere, etc)
@@ -286,16 +281,16 @@ public:
 
 
 protected:
-	FTransform3d ToAppendTransform;
+	FTransform3d AppendTransform;
 	TUniquePtr<FDynamicMesh3> Mesh;
 
 	TUniquePtr<FDynamicMeshAABBTree3> MeshAABBTree;
-	TUniquePtr<TFastWindingTree<FDynamicMesh3>> FastWinding;
+	TUniquePtr<UE::Geometry::TFastWindingTree<FDynamicMesh3>> FastWinding;
 
 public:
 	const TUniquePtr<FDynamicMesh3>& GetMesh() const { return Mesh; }
 	TUniquePtr<FDynamicMeshAABBTree3>& GetAABBTree();		// note: cannot return const because query functions are non-const
-	const TUniquePtr<TFastWindingTree<FDynamicMesh3>>& GetFastWindingTree();
+	const TUniquePtr<UE::Geometry::TFastWindingTree<FDynamicMesh3>>& GetFastWindingTree();
 
 	void SetMesh(const FDynamicMesh3& MeshIn) { *Mesh = MeshIn; OnMeshUpdated(); }
 	void AppendMeshWithAppendTransform(FDynamicMesh3&& ToAppend, bool bPostMeshUpdate = true);
@@ -368,7 +363,7 @@ public:
 
 protected:
 	UPROPERTY()
-	int32 MeshCountSafetyThreshold = 2000;
+	int32 MeshCountSafetyThreshold = 1000;
 
 	/** Meshes in the pool that are available */
 	UPROPERTY()

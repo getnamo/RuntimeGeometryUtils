@@ -10,7 +10,10 @@
 #include "Operations/MeshBoolean.h"
 #include "Implicit/Solidify.h"
 
+#include "Misc/Paths.h"
 #include "DynamicMeshOBJReader.h"
+
+using namespace UE::Geometry;
 
 // Sets default values
 ADynamicMeshBaseActor::ADynamicMeshBaseActor()
@@ -206,12 +209,11 @@ FVector ADynamicMeshBaseActor::GetTriNormal(int TriangleID, bool bWorldSpace) co
 {
 	if (SourceMesh.IsTriangle(TriangleID))
 	{
-		FVector Normal = SourceMesh.GetTriNormal(TriangleID);
+		FVector3d Normal = SourceMesh.GetTriNormal(TriangleID);
 		if (bWorldSpace)
 		{
-			FTransform3d ActorToWorld(GetActorTransform());
-			
-			return ActorToWorld.TransformVectorNoScale(Normal);
+			FTransformSRT3d ActorToWorld(GetActorTransform());
+			return (FVector)ActorToWorld.TransformNormal(Normal);
 		}
 		return (FVector)Normal;
 	}
@@ -273,11 +275,10 @@ bool ADynamicMeshBaseActor::IntersectRay(FVector RayOrigin, FVector RayDirection
 {
 	if (bEnableSpatialQueries)
 	{
-		FTransform3d ActorToWorld(GetActorTransform());
+		FTransformSRT3d ActorToWorld(GetActorTransform());
 		FVector3d WorldDirection(RayDirection); WorldDirection.Normalize();
-		FRay3d LocalRay(ActorToWorld.InverseTransformPosition(RayOrigin),
-						ActorToWorld.InverseTransformVectorNoScale(WorldDirection) );
-
+		FRay3d LocalRay(ActorToWorld.InverseTransformPosition((FVector3d)RayOrigin),
+			ActorToWorld.InverseTransformNormal(WorldDirection));
 		IMeshSpatial::FQueryOptions QueryOptions;
 		if (MaxDistance > 0)
 		{
@@ -346,8 +347,8 @@ void ADynamicMeshBaseActor::BooleanWithMesh(ADynamicMeshBaseActor* OtherMeshActo
 		}
 
 		FMeshBoolean Boolean(
-			&MeshToUpdate,
-			&OtherMesh,
+			&MeshToUpdate, FTransform3d::Identity,
+			&OtherMesh, FTransform3d::Identity,
 			&ResultMesh,
 			ApplyOp);
 		Boolean.bPutResultInInputSpace = true;

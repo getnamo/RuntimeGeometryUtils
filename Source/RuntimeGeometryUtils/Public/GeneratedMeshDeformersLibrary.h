@@ -33,7 +33,6 @@ public:
 	UFUNCTION(BlueprintCallable) static UPARAM(DisplayName = "Input Mesh")
 	UGeneratedMesh* DeformMeshHeightmap(UGeneratedMesh* Mesh, UTexture2D* Heightmap, float ZScale= 1, FVector DirectionNormal= FVector(0, 0, 1));
 
-
 	/**
 	 * Displace the mesh vertices using a 2D Sin wave.
 	 */
