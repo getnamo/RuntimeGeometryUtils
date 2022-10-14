@@ -18,6 +18,11 @@ namespace RTGUtils
 		UStaticMesh* StaticMesh,
 		const UE::Geometry::FDynamicMesh3* Mesh);
 
+	//Other way around
+	RUNTIMEGEOMETRYUTILS_API void UpdateDynamicMeshFromStaticMesh(
+		UStaticMesh* StaticMesh,
+		UE::Geometry::FDynamicMesh3& Mesh,
+		bool bUseMeshDescriptorsInEditor = false);
 
 
 	/**

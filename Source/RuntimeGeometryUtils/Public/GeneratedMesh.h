@@ -56,6 +56,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GeneratedMesh|Initialization")
 	bool ReadMeshFromFile(FString Path, bool bFlipOrientation);
 
+
+	UFUNCTION(BlueprintCallable, Category = "GeneratedMesh|Initialization")
+	UGeneratedMesh* MeshFromStatic(UStaticMesh* InMesh);
+
 	/**
 	 * Set the Append Transform. This transform will be applied to any shapes created using the AppendX() functions (AppendBox, AppendSphere, etc)
 	 * before merging them into the accumulated mesh.
@@ -363,7 +367,7 @@ public:
 
 protected:
 	UPROPERTY()
-	int32 MeshCountSafetyThreshold = 1000;
+	int32 MeshCountSafetyThreshold = 2000;
 
 	/** Meshes in the pool that are available */
 	UPROPERTY()
