@@ -98,6 +98,25 @@ bool UGeneratedMesh::ReadMeshFromFile(FString Path, bool bFlipOrientation)
 	return true;
 }
 
+UGeneratedMesh* UGeneratedMesh::MeshFromStatic(UStaticMesh* StaticMesh)
+{
+	if (!StaticMesh)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UGeneratedMesh::MeshFromStatic, passed in an empty static mesh"));
+		return nullptr;
+	}
+
+	FDynamicMesh3 ImportedMesh;
+
+	RTGUtils::UpdateDynamicMeshFromStaticMesh(StaticMesh, ImportedMesh);
+
+	*Mesh = MoveTemp(ImportedMesh);
+	ClearAppendTransform();
+	OnMeshUpdated();
+	return this;
+}
+
+
 
 UGeneratedMesh* UGeneratedMesh::MakeDuplicate(UGeneratedMesh* MeshObj)
 {
