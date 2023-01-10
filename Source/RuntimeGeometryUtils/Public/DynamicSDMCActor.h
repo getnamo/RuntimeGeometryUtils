@@ -4,9 +4,9 @@
 #include "GameFramework/Actor.h"
 #include "Components/DynamicMeshComponent.h"
 #include "DynamicMeshBaseActor.h"
+#include "DynamicMesh/DynamicMesh3.h"
 #include "DynamicSDMCActor.generated.h"
 
-class FDynamicMesh3;
 
 UCLASS()
 class RUNTIMEGEOMETRYUTILS_API ADynamicSDMCActor : public ADynamicMeshBaseActor
