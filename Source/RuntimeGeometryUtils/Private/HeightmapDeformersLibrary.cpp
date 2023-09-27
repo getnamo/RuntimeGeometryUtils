@@ -433,7 +433,9 @@ void UHeightmapDeformersLibrary::InitializeBrushIndices(int MapSize, int Radius,
 		}
 	}
 
-	delete XOffsets, YOffsets, Weights;
+	delete[] XOffsets;
+	delete[] YOffsets;
+	delete[] Weights;
 }
 
 

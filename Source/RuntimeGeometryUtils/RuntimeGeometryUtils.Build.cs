@@ -29,7 +29,8 @@ public class RuntimeGeometryUtils : ModuleRules
 				"GeometryCore",
 				"GeometryFramework",
 				"DynamicMesh",
-				"ProceduralMeshComponent"
+				"ProceduralMeshComponent",
+				"ModelingComponents"
 			}
 			);
 
