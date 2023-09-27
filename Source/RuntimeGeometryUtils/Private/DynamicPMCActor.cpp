@@ -3,6 +3,7 @@
 #include "MeshComponentRuntimeUtils.h"
 #include "DynamicMesh/DynamicMesh3.h"
 #include "Operations/MeshConvexHull.h"
+#include "MaterialDomain.h"
 
 using namespace UE::Geometry;
 
@@ -52,6 +53,7 @@ void ADynamicPMCActor::UpdatePMCMesh()
 		RTGUtils::UpdatePMCFromDynamicMesh_SplitTriangles(MeshComponent, &SourceMesh, bUseFaceNormals, bUseUV0, bUseVertexColors, bGenerateSectionCollision);
 
 		// update material on new section
+
 		UMaterialInterface* UseMaterial = (this->Material != nullptr) ? this->Material : UMaterial::GetDefaultMaterial(MD_Surface);
 		MeshComponent->SetMaterial(0, UseMaterial);
 

@@ -1,5 +1,6 @@
 #include "DynamicSMCActor.h"
 #include "Materials/Material.h"
+#include "MaterialShared.h"
 #include "MeshComponentRuntimeUtils.h"
 
 using namespace UE::Geometry;
