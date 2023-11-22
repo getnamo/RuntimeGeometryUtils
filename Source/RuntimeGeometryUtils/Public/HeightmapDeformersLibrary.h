@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Classes/Kismet/BlueprintFunctionLibrary.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
 #include "GeneratedMesh.h"
 #include "HeightmapDeformersLibrary.generated.h"
 
