@@ -54,7 +54,7 @@ void ADynamicPMCActor::UpdatePMCMesh()
 
 		// update material on new section
 
-		UMaterialInterface* UseMaterial = (this->Material != nullptr) ? this->Material : UMaterial::GetDefaultMaterial(MD_Surface);
+		UMaterialInterface* UseMaterial = (this->Material != nullptr) ? this->Material : UMaterial::GetDefaultMaterial(EMaterialDomain::MD_Surface);
 		MeshComponent->SetMaterial(0, UseMaterial);
 
 		// generate convex collision

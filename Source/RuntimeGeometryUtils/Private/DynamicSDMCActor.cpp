@@ -6,6 +6,7 @@
 #include "Physics/ComponentCollisionUtil.h"
 #include "Materials/Material.h"
 #include "MaterialShared.h"
+#include "MaterialDomain.h"
 
 using namespace UE::Geometry;
 
@@ -73,7 +74,7 @@ void ADynamicSDMCActor::UpdateSDMCMesh()
 		MeshComponent->NotifyMeshUpdated();
 
 		// update material
-		UMaterialInterface* UseMaterial = (this->Material != nullptr) ? this->Material : UMaterial::GetDefaultMaterial(MD_Surface);
+		UMaterialInterface* UseMaterial = (this->Material != nullptr) ? this->Material : UMaterial::GetDefaultMaterial(EMaterialDomain::MD_Surface);
 		MeshComponent->SetMaterial(0, UseMaterial);
 	}
 }

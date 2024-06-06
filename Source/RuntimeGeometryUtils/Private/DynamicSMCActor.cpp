@@ -1,6 +1,7 @@
 #include "DynamicSMCActor.h"
 #include "Materials/Material.h"
 #include "MaterialShared.h"
+#include "MaterialDomain.h"
 #include "MeshComponentRuntimeUtils.h"
 
 using namespace UE::Geometry;
@@ -62,7 +63,7 @@ void ADynamicSMCActor::UpdateSMCMesh()
 		RTGUtils::UpdateStaticMeshFromDynamicMesh(StaticMesh, &SourceMesh);
 
 		// update material on new section
-		UMaterialInterface* UseMaterial = (this->Material != nullptr) ? this->Material : UMaterial::GetDefaultMaterial(MD_Surface);
+		UMaterialInterface* UseMaterial = (this->Material != nullptr) ? this->Material : UMaterial::GetDefaultMaterial(EMaterialDomain::MD_Surface);
 		MeshComponent->SetMaterial(0, UseMaterial);
 	}
 }

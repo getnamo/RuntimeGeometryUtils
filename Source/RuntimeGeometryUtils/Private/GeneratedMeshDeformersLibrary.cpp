@@ -4,8 +4,12 @@
 #include "FrameTypes.h"
 #include "DynamicMesh/MeshNormals.h"
 #include "Async/ParallelFor.h"
+#include "GeneratedMesh.h"
 #include "HeightmapDeformersLibrary.h"
+#include "Interface_CollisionDataProviderCore.h"
 
+
+using namespace UE::Geometry;
 
 UGeneratedMesh* UGeneratedMeshDeformersLibrary::DeformMeshAxisSinWave1D(UGeneratedMesh* MeshObj, float Magnitude, float Frequency, float FrequencyShift, FVector AxisIn, FVector UpIn)
 {

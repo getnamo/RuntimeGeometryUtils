@@ -4,6 +4,8 @@
 #include "Physics/PhysicsDataCollection.h"
 #include "Engine/CollisionProfile.h"
 
+using namespace UE::Geometry;
+
 URuntimeDynamicMeshComponent::URuntimeDynamicMeshComponent()
 {
 	SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);

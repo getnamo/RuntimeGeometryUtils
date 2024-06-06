@@ -8,7 +8,6 @@
 
 class ADynamicMeshBaseActor;
 
-
 UENUM(BlueprintType)
 enum class EGeneratedMeshBooleanOperation : uint8
 {
