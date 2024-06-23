@@ -283,6 +283,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GeneratedMesh|Normals") UPARAM(DisplayName = "Input Mesh")
 	UGeneratedMesh* RecomputeNormals();
 
+	UFUNCTION(BlueprintCallable, Category = "GeneratedMesh")
+	UStaticMesh* ToStaticMesh();
+
 
 protected:
 	FTransform3d AppendTransform;

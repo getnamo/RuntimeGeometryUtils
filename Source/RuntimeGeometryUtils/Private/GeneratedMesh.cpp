@@ -583,6 +583,13 @@ UGeneratedMesh* UGeneratedMesh::RecomputeNormals()
 	return this;
 }
 
+UStaticMesh* UGeneratedMesh::ToStaticMesh()
+{
+	UStaticMesh* StaticMesh = NewObject<UStaticMesh>();
+	RTGUtils::UpdateStaticMeshFromDynamicMesh(StaticMesh, Mesh.Get());
+	return StaticMesh;
+}
+
 
 
 
